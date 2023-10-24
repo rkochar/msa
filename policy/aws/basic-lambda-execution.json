@@ -1,0 +1,5 @@
+api_gateway_role = aws.iam.Role("lambda-role",
+    assume_role_policy = aws.iam.assume_role_policy_for_principal(
+        aws.iam.Principals.LambdaPrincipal),
+    managed_policy_arns = [aws.iam.ManagedPolicies.AWSLambdaBasicExecutionRole],
+    )
