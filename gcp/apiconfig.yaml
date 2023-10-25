@@ -1,0 +1,32 @@
+swagger: '2.0'
+info:
+  title: API Config
+  description: API Config
+  version: 1.0.0
+schemes:
+- https
+produces:
+- application/json
+paths:
+  /:
+    get:
+      summary: apigw_lambda_foo
+      operationId: /
+      x-google-backend:
+        address: https://europe-west4-master-thesis-faas-monad.cloudfunctions.net/
+      responses:
+        '200':
+          description: TODO
+          schema:
+            type: string
+  /bar:
+    get:
+      summary: apigw_lambda_bar
+      operationId: /bar
+      x-google-backend:
+        address: https://europe-west4-master-thesis-faas-monad.cloudfunctions.net/bar
+      responses:
+        '200':
+          description: TODO
+          schema:
+            type: string

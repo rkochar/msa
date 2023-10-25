@@ -1,10 +1,12 @@
 from pulumi import export
-from pulumi_aws_apigateway import RestAPI
+from pulumi_aws_apigateway import RestAPI, RouteArgs
+
 
 def create_apigw(name, routes):
-    apigw = RestAPI('apigw', routes=parse_routes(routes))
-    export('apigw-url', apigw.url)
+    apigw = RestAPI(name, routes=parse_routes(routes))
+    export(f'apigw-{name}-url', apigw.url)
     return apigw
+
 
 def parse_routes(routes):
     rs = []
