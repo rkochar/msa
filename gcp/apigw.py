@@ -9,16 +9,16 @@ project = config.require("project")
 region = config.get("region")
 
 
-def create_apigw(name, routes):
-    apigw = gcp.apigateway.Api(name, api_id=f"apigw-id-{name}")
-    opts = ResourceOptions(provider="google_beta")
+def create_apigw(name, routes, opts=None):
+    apigw = gcp.apigateway.Api(name, api_id=f"apigw-id-{name}", opts=opts)
+    # opts = ResourceOptions(provider="google_beta")
     parse_routes(routes)
-    api_config = create_api_config(apigw)
-    gateway = create_api_gateway(name, api_config)
+    api_config = create_api_config(apigw, opts=opts)
+    gateway = create_api_gateway(name, api_config, opts=opts)
     return apigw
 
 
-def create_api_config(apigw):
+def create_api_config(apigw, opts=None):
     return gcp.apigateway.ApiConfig("apiCfgApiConfig",
                                     api=apigw.api_id,
                                     api_config_id="my-config",
@@ -33,11 +33,12 @@ def create_api_config(apigw):
                                     opts=ResourceOptions(provider="google_beta"))
 
 
-def create_api_gateway(name, api_config):
+def create_api_gateway(name, api_config, opts=None):
     return gcp.apigateway.Gateway("apiGwGateway",
                                   api_config=api_config.id,
                                   gateway_id=f"api-gateway-{name}",
                                   opts=ResourceOptions(provider="google_beta"))
+
 
 def parse_routes(routes):
     with open("./gcp/apiconfigtemplate.yaml") as f:
