@@ -22,7 +22,7 @@ def foo(request):
     else:
         name = 'World'
 
-    return f'Hello {name}!. request: {request_json}'
+    return f'Hello {name}!'
 
 
 @functions_framework.http

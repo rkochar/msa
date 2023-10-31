@@ -54,13 +54,15 @@ class Distribute:
         elif self.cloud_provider == "azure":
             pass
 
-    def create_lambda(self, name, handler, role, environment={}, opts=None):
+    def create_lambda(self, name, handler, role, environment={}, min_instance=1, max_instance=3, ram="256M", timeout_seconds=60, opts=None):
         if self.cloud_provider == "aws":
             return aws_lambda.create_lambda(name, handler, role, environment, opts=opts)
         elif self.cloud_provider == "gcp":
-            return gcp_lambda.create_lambda(name, handler.split("."), role, environment,
-                                            source_bucket=self.gcp_lambda_bucket,
-                                            bucket_archive=self.gcp_lambda_archive, opts=opts)
+            return gcp_lambda.create_lambdav2(name, handler.split("."), role, environment,
+                                              source_bucket=self.gcp_lambda_bucket,
+                                              bucket_archive=self.gcp_lambda_archive,
+                                              min_instance=min_instance, max_instance=max_instance,
+                                              ram=ram, timeout_seconds=timeout_seconds, opts=opts)
         elif self.cloud_provider == "azure":
             pass
 
