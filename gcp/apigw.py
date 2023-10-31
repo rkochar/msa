@@ -1,43 +1,45 @@
 from base64 import b64encode
 import oyaml as yaml
 
-from pulumi import Config, ResourceOptions
+from pulumi import Config, export, Output
 import pulumi_gcp as gcp
 
+
 config = Config("gcp")
-project = config.require("project")
+project = config.get("project")
 region = config.get("region")
 
 
 def create_apigw(name, routes, opts=None):
-    apigw = gcp.apigateway.Api(name, api_id=f"apigw-id-{name}", opts=opts)
-    # opts = ResourceOptions(provider="google_beta")
-    parse_routes(routes)
-    api_config = create_api_config(apigw, opts=opts)
+    apigw = gcp.apigateway.Api(name, api_id=f"apigw-id-{name}", project=project, opts=opts)
+    api_config = create_api_config(apigw, routes=routes, opts=opts)
     gateway = create_api_gateway(name, api_config, opts=opts)
+    export(f"api-gateway-url-{name}", Output.concat("https://", gateway.default_hostname))
     return apigw
 
 
-def create_api_config(apigw, opts=None):
+def create_api_config(apigw, routes, opts=None):
+    parse_routes(routes)
     return gcp.apigateway.ApiConfig("apiCfgApiConfig",
                                     api=apigw.api_id,
                                     api_config_id="my-config",
+                                    project=project,
                                     openapi_documents=[gcp.apigateway.ApiConfigOpenapiDocumentArgs(
                                         document=gcp.apigateway.ApiConfigOpenapiDocumentDocumentArgs(
                                             path="spec.yaml",
-                                            contents=(lambda path: b64encode(
-                                                open(path).read().encode()).decode())(
-                                                "./gcp/apiconfig.yaml")
+                                            contents=(lambda path: b64encode(open(path).read().encode()).decode())("./gcp/apiconfig.yaml"),
                                         ),
                                     )],
-                                    opts=ResourceOptions(provider="google_beta"))
+                                    opts=opts)
 
 
 def create_api_gateway(name, api_config, opts=None):
     return gcp.apigateway.Gateway("apiGwGateway",
+                                  project=project,
+                                  region=region,
                                   api_config=api_config.id,
                                   gateway_id=f"api-gateway-{name}",
-                                  opts=ResourceOptions(provider="google_beta"))
+                                  opts=opts)
 
 
 def parse_routes(routes):
@@ -49,16 +51,17 @@ def parse_routes(routes):
         if apiconfig["paths"] is None:
             apiconfig["paths"] = {}
         apiconfig["paths"][route[0]] = {}
-        apiconfig["paths"][route[0]][route[1].lower()] = {"summary": route[2],
+        apiconfig["paths"][route[0]][route[1].lower()] = {"summary": route[4],
                                                           "operationId": route[0],
                                                           "x-google-backend": {
-                                                              "address": f"https://{region}-{project}.cloudfunctions.net{route[0]}"},
+                                                              "address": f"https://{region}-{project}.cloudfunctions.net/{route[3]}"
+                                                          },
                                                           "responses": {"200": {"description": "TODO",
                                                                                 "schema": {"type": "string"}}}}
-
-        with open("./gcp/apiconfig.yaml", "w") as f:
-            yaml.dump(apiconfig, f, indent=2)
-        f.close()
+        # print(f"Api config: {apiconfig}")
+    with open("./gcp/apiconfig.yaml", "w") as f:
+        yaml.dump(apiconfig, f)
+    f.close()
 
 
 if __name__ == "__main__":

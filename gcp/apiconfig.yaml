@@ -8,12 +8,12 @@ schemes:
 produces:
 - application/json
 paths:
-  /:
+  /foo:
     get:
-      summary: apigw_lambda_foo
-      operationId: /
+      summary: lambda for foo
+      operationId: /foo
       x-google-backend:
-        address: https://europe-west4-master-thesis-faas-monad.cloudfunctions.net/
+        address: https://europe-west1-master-thesis-faas-monad.cloudfunctions.net/lambda-apigw-foo
       responses:
         '200':
           description: TODO
@@ -21,10 +21,10 @@ paths:
             type: string
   /bar:
     get:
-      summary: apigw_lambda_bar
+      summary: lambda for bar
       operationId: /bar
       x-google-backend:
-        address: https://europe-west4-master-thesis-faas-monad.cloudfunctions.net/bar
+        address: https://europe-west1-master-thesis-faas-monad.cloudfunctions.net/lambda-apigw-bar
       responses:
         '200':
           description: TODO

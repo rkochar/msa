@@ -9,5 +9,6 @@ def create_sql_database(name, engine, engine_version, storage, instance_class, u
                         instance_class=instance_class,
                         username=username,
                         password=password,
+                        skip_final_snapshot=True,
                         opts=opts
                         )
