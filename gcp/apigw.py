@@ -1,7 +1,8 @@
 from base64 import b64encode
 import oyaml as yaml
+from utils.helpers import merge_opts
 
-from pulumi import Config, export, Output
+from pulumi import Config, export, Output, ResourceOptions
 import pulumi_gcp as gcp
 
 
@@ -12,8 +13,9 @@ region = config.get("region")
 
 def create_apigw(name, routes, opts=None):
     apigw = gcp.apigateway.Api(name, api_id=f"apigw-id-{name}", project=project, opts=opts)
-    api_config = create_api_config(apigw, routes=routes, opts=opts)
-    gateway = create_api_gateway(name, api_config, opts=opts)
+    api_config = create_api_config(apigw, routes=routes, opts=merge_opts(opts, ResourceOptions(depends_on=[apigw])))
+    gateway = create_api_gateway(name, api_config, opts=merge_opts(opts, ResourceOptions(depends_on=[api_config])))
+
     export(f"api-gateway-url-{name}", Output.concat("https://", gateway.default_hostname))
     return apigw
 

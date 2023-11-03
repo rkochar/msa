@@ -2,3 +2,4 @@
 venv/
 .idea/
 .pulumi/
+Pulumi.dev.yaml
