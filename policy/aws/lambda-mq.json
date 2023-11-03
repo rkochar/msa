@@ -12,8 +12,8 @@
                 "logs:CreateLogStream",
                 "logs:PutLogEvents"
             ],
-            "Effect": "Allow",
-            "Resource": "*"
+            "Resource": "*",
+            "Effect": "Allow"
         }
     ]
 }

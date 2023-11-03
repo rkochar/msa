@@ -1,6 +1,5 @@
 import json
 import datetime
-import functions_framework
 
 
 def foo(event, context):
