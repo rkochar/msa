@@ -20,8 +20,8 @@ Input: (str: name of apigw, List[Route]: routes)
 
 #### Route
 List of tuples.
-- **AWS:** (<path>, <http request type>, <the lambda variable>)
-- **GCP:** (<path>, <http request type>, NA, <name of lambda>, <description>)
+- **AWS:** (path, http request type, the lambda variable)
+- **GCP:** (path, http request type, NA, name of lambda, description)
 
 ### Message Queue
 Input: (str: topic_name) 
