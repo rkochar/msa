@@ -15,8 +15,9 @@ from gcp import cloudfunction as gcp_lambda
 from gcp import pubsub as gcp_pubsub
 from gcp import cloudsql as gcp_sql
 
-
-# import azure
+from utils.azure import setup_azure
+from azure import functionapp as azure_functionapp
+from azure import storageblob as azure_storageblob
 
 class Monad:
     def __init__(self):
@@ -27,7 +28,7 @@ class Monad:
         elif self.cloud_provider == "aws":
             pass
         elif self.cloud_provider == "azure":
-            pass
+            self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan = setup_azure()
 
     def create_apigw(self, name, routes, opts=None):
         if self.cloud_provider == "aws":
@@ -51,7 +52,9 @@ class Monad:
                                               min_instance=min_instance, max_instance=max_instance,
                                               ram=ram, timeout_seconds=timeout_seconds, opts=opts)
         elif self.cloud_provider == "azure":
-            pass
+            blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=(self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan), opts=opts)
+            func = azure_functionapp.create_function_app(name, environment, http_trigger=http_trigger, sqs=mq_topic, ram=ram, azure_config=(self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan), opts=opts)
+            return func
 
     def create_sns_topic(self, name, opts=None):
         if self.cloud_provider == "aws":
