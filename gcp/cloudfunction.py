@@ -18,9 +18,9 @@ def create_lambdav2(name, handler, role, environment, http_trigger, topic, sourc
                         project="master-thesis-faas-monad",  # project,
                         build_config=FunctionBuildConfigArgs(
                             runtime=runtime,
-                            entry_point=handler[1],
+                            entry_point="template",
                             environment_variables={
-                                "GOOGLE_FUNCTION_SOURCE": str(handler[0]) + get_file_extension(runtime)
+                                "GOOGLE_FUNCTION_SOURCE": handler.replace(".", "-") + get_file_extension(runtime)
                             },
                             source=FunctionBuildConfigSourceArgs(
                                 storage_source=FunctionBuildConfigSourceStorageSourceArgs(

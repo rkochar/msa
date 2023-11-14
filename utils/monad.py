@@ -1,6 +1,7 @@
 from pulumi import Config
 
 from utils.helpers import merge_opts
+from utils.synthesizer import synthesize
 
 from aws import apigw as aws_apigw
 from aws import lambdafunction as aws_lambda
@@ -39,13 +40,14 @@ class Monad:
             pass
 
     def create_lambda(self, name, handler, role, environment={}, http_trigger=True, mq_topic=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, opts=None):
+        synthesize(handler, http_trigger)
         if self.cloud_provider == "aws":
             return aws_lambda.create_lambda(name, handler, role, environment,
                                             http_trigger=http_trigger, sqs=mq_topic,
                                             ram=ram, timeout_seconds=timeout_seconds,
                                             opts=opts)
         elif self.cloud_provider == "gcp":
-            return gcp_lambda.create_lambdav2(name, handler.split("."), role, environment,
+            return gcp_lambda.create_lambdav2(name, handler, role, environment,
                                               http_trigger=http_trigger, topic=mq_topic,
                                               source_bucket=self.gcp_lambda_bucket,
                                               bucket_archive=self.gcp_lambda_archive,
