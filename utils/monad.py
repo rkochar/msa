@@ -20,6 +20,7 @@ from utils.azure import setup_azure
 from azure import functionapp as azure_functionapp
 from azure import storageblob as azure_storageblob
 
+
 class Monad:
     def __init__(self):
         config = Config()
@@ -39,8 +40,9 @@ class Monad:
         elif self.cloud_provider == "azure":
             pass
 
-    def create_lambda(self, name, handler, role, environment={}, http_trigger=True, mq_topic=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, opts=None):
-        synthesize(handler, http_trigger)
+    def create_lambda(self, name, handler, role, environment={}, http_trigger=True, mq_topic=None, min_instance=1,
+                      max_instance=3, ram=256, timeout_seconds=60, opts=None):
+        synthesize(handler, http_trigger, environment)
         if self.cloud_provider == "aws":
             return aws_lambda.create_lambda(name, handler, role, environment,
                                             http_trigger=http_trigger, sqs=mq_topic,
@@ -54,8 +56,12 @@ class Monad:
                                               min_instance=min_instance, max_instance=max_instance,
                                               ram=ram, timeout_seconds=timeout_seconds, opts=opts)
         elif self.cloud_provider == "azure":
-            blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=(self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan), opts=opts)
-            func = azure_functionapp.create_function_app(name, environment, http_trigger=http_trigger, sqs=mq_topic, ram=ram, azure_config=(self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan), opts=opts)
+            blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=(
+            self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan), opts=opts)
+            func = azure_functionapp.create_function_app(name, environment, http_trigger=http_trigger, sqs=mq_topic,
+                                                         ram=ram, azure_config=(
+                self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan),
+                                                         opts=opts)
             return func
 
     def create_sns_topic(self, name, opts=None):
@@ -70,7 +76,8 @@ class Monad:
         if self.cloud_provider == "aws":
             return aws_snssqs.create_sqs(topic_name, opts=opts)
         elif self.cloud_provider == "gcp":
-            return gcp_pubsub.create_pubsub(topic_name, message_retention_seconds=message_retention_seconds, opts=opts), environment
+            return gcp_pubsub.create_pubsub(topic_name, message_retention_seconds=message_retention_seconds,
+                                            opts=opts), environment
         elif self.cloud_provider == "azure":
             pass
 
