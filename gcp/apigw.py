@@ -16,7 +16,7 @@ def create_apigw(name, routes, opts=None):
     api_config = create_api_config(apigw, routes=routes, opts=merge_opts(opts, ResourceOptions(depends_on=[apigw])))
     gateway = create_api_gateway(name, api_config, opts=merge_opts(opts, ResourceOptions(depends_on=[api_config])))
 
-    export(f"api-gateway-url-{name}", Output.concat("https://", gateway.default_hostname))
+    export(f"apigw-url-{name}", Output.concat("https://", gateway.default_hostname))
     return apigw
 
 

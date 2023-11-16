@@ -2,15 +2,18 @@ import re
 
 from pulumi_azure.appservice import FunctionApp
 from pulumi_azure import storage
-from pulumi import export, Output
+from pulumi import export, Output, ResourceOptions
+
+from utils.helpers import deploy_function_code
 
 
-def create_function_app(name, environment, http_trigger=True, sqs=None, ram=256, runtime="python3.10",
+def create_function_app(name, handler, environment, http_trigger=True, sqs=None, ram=256, runtime="python3.10",
                         azure_config=None, opts=None):
     language = re.split('\d+', runtime)[0]
     version = runtime.split(language)[1]
     resource_group, storage_account, storage_container, app_service_plan = azure_config
     function_app = FunctionApp(name,
+                               name=name,
                                resource_group_name=resource_group.name,
                                storage_account_name=storage_account.name,
                                storage_account_access_key=storage_account.primary_access_key,
@@ -32,11 +35,7 @@ def create_function_app(name, environment, http_trigger=True, sqs=None, ram=256,
                                }
                                )
 
+    deploy_function_code(name, handler, opts=ResourceOptions(depends_on=[function_app]))
     export(f"lambda-{name}-hostname", function_app.default_hostname)
     return function_app
 
-
-def signature(resource_group, account, app_container):
-    pass
-    # https://www.pulumi.com/registry/packages/azure/api-docs/storage/getaccountblobcontainersas/
-    # https://www.pulumi.com/registry/packages/azure/api-docs/apimanagement/api/

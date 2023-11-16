@@ -6,5 +6,3 @@ apigw_foobar()
 # create_mq()
 # create_mvccdb()
 
-
-
