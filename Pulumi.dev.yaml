@@ -2,6 +2,6 @@ encryptionsalt: v1:vUjc4mWmH2g=:v1:42hW2kgJIiFnjnsW:rB6MtrITdn1Ehfi+omRS2HJ0K6cs
 config:
   aws:region: eu-west-1
   azure:location: West Europe
-  faas-monad:cloud_provider: aws
+  faas-monad:cloud_provider: gcp
   gcp:project: master-thesis-faas-monad
   gcp:region: europe-west1

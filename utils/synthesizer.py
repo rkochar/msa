@@ -1,4 +1,5 @@
-from shutil import copyfile
+from shutil import copyfile, copytree, move, rmtree
+from os import path
 
 from pulumi import Config
 
@@ -16,7 +17,7 @@ def synthesize(handler, is_http, environment):
         elif cloud_provider == "gcp":
             synthesize_gcp_http(name, function, template="http")
         elif cloud_provider == "azure":
-            synthesize_azure_http()
+            synthesize_azure_http(name, function, template="http")
     else:
         if cloud_provider == "aws":
             synthesize_aws_mq(name, function, template="mq", environment=environment)
@@ -24,14 +25,6 @@ def synthesize(handler, is_http, environment):
             synthesize_gcp_mq(name, function, template="mq")
         elif cloud_provider == "azure":
             synthesize_azure_mq()
-
-
-def synthesize_aws_http(name, function, template):
-    return synthesize_http(name, function, event="event")
-
-
-def synthesize_gcp_http(name, function, template):
-    return synthesize_http(name, function, template, event="request")
 
 
 def append_user_function(name, function, template, function_parameters):
@@ -52,6 +45,27 @@ def append_user_function(name, function, template, function_parameters):
     return new_file_path
 
 
+def synthesize_aws_http(name, function, template):
+    return synthesize_http(name, function, template, event="event")
+
+
+def synthesize_gcp_http(name, function, template):
+    return synthesize_http(name, function, template, event="request")
+
+
+def synthesize_azure_http(name, function, template):
+    destination = f"./code/output/azure/{name}-{function}"
+    if path.exists(destination):
+        rmtree(destination)
+    copytree(f"./templates/azure/{template}", destination)
+
+    function_call = "req, headers, query_string_parameters"
+    template = f"{template}/function_app"
+    new_file_path = append_user_function(name, function, template, function_call)
+
+    replace(new_file_path, "<route>", f"{name}-{function}")
+    move(new_file_path, f"{destination}/function_app.py")
+
 def synthesize_http(name, function, template, event):
     function_call = f"{event}, headers, query_string_parameters"
     append_user_function(name, function, template, function_call)
@@ -60,10 +74,6 @@ def synthesize_http(name, function, template, event):
 def synthesize_mq(name, function, template):
     function_call = f"message"  # TODO: cleanup
     append_user_function(name, function, template, function_call)
-
-
-def synthesize_azure_http():
-    pass
 
 
 def synthesize_aws_mq(name, function, template, environment):

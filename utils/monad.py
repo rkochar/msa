@@ -40,7 +40,7 @@ class Monad:
         elif self.cloud_provider == "azure":
             pass
 
-    def create_lambda(self, name, handler, role, environment={}, http_trigger=True, mq_topic=None, min_instance=1,
+    def create_lambda(self, name, handler, role=None, environment={}, http_trigger=True, mq_topic=None, min_instance=1,
                       max_instance=3, ram=256, timeout_seconds=60, opts=None):
         synthesize(handler, http_trigger, environment)
         if self.cloud_provider == "aws":
@@ -56,9 +56,9 @@ class Monad:
                                               min_instance=min_instance, max_instance=max_instance,
                                               ram=ram, timeout_seconds=timeout_seconds, opts=opts)
         elif self.cloud_provider == "azure":
-            blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=(
-            self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan), opts=opts)
-            func = azure_functionapp.create_function_app(name, environment, http_trigger=http_trigger, sqs=mq_topic,
+            #blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=(
+            #self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan), opts=opts)
+            func = azure_functionapp.create_function_app(name, handler, environment, http_trigger=http_trigger, sqs=mq_topic,
                                                          ram=ram, azure_config=(
                 self.azure_resource_group, self.azure_account, self.storage_container, self.azure_service_plan),
                                                          opts=opts)

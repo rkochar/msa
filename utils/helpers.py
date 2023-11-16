@@ -1,5 +1,5 @@
-from pulumi import ResourceOptions, Input, Output
-
+from pulumi import ResourceOptions, Input, Output, export
+from pulumi_command.local import Command
 # from pulumi_azure_native import storage, resources
 
 from fileinput import input
@@ -20,11 +20,30 @@ def merge_opts(opts1: ResourceOptions, opts2: ResourceOptions):
     return ResourceOptions.merge(opts1, opts2)
 
 
+def deploy_function_code(name, handler, opts):
+    handler_path = handler.replace(".", "-")
+    code_path = f"./code/output/azure/{handler_path}"
+    deploy_code_command = Command(f"deploy-function-code-to-{name}",
+                                  interpreter=["/bin/sh", "-c"],
+                                  dir=code_path,
+                                  create=f"sleep 15 && func azure functionapp publish {name}",
+                                  #create="az ad signed-in-user show --query userPrincipalName --output tsv",
+                                  opts=opts
+                                  )
+
+    endpoint = deploy_code_command.stdout.apply(
+        lambda output: [line.split("Invoke url: ")[1] for line in output.split("\n") if "Invoke url:" in line][0]
+    )
+
+    export(f"function-app-{name}-endpoint", endpoint)
+
+
 # def replace(filepath, pattern, new_string):
 #     for line in input(filepath, inplace=True):
 #         if pattern in line:
 #             line = line.replace(pattern, new_string)
 #         sys.stdout.write(line)
+
 
 def replace(file_path, pattern, subst):
     # Create temp file
