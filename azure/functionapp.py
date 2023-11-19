@@ -23,6 +23,8 @@ def create_function_app(name, handler, environment, http_trigger=True, sqs=None,
                                os_type="linux",
                                version="~4",
 
+                               https_only=False,
+
                                app_settings={
                                    "WEBSITE_RUN_FROM_PACKAGE": "",
                                    "FUNCTIONS_WORKER_RUNTIME": language,
