@@ -9,22 +9,28 @@ config = Config()
 cloud_provider = config.get("cloud_provider")
 
 
-def synthesize(handler, is_http, environment):
+def synthesize(handler, template, environment):
     name, function = handler.split(".")
-    if is_http:
-        if cloud_provider == "aws":
-            synthesize_aws_http(name, function, template="http")
-        elif cloud_provider == "gcp":
-            synthesize_gcp_http(name, function, template="http")
-        elif cloud_provider == "azure":
-            synthesize_azure_http(name, function, template="http")
-    else:
-        if cloud_provider == "aws":
-            synthesize_aws_mq(name, function, template="mq", environment=environment)
-        elif cloud_provider == "gcp":
-            synthesize_gcp_mq(name, function, template="mq")
-        elif cloud_provider == "azure":
-            synthesize_azure_mq()
+    match template:
+        case "http":
+            if cloud_provider == "aws":
+                synthesize_aws_http(name, function, template=template)
+            elif cloud_provider == "gcp":
+                synthesize_gcp_http(name, function, template=template)
+            elif cloud_provider == "azure":
+                synthesize_azure_http(name, function, template=template)
+        case "mq":
+            if cloud_provider == "aws":
+                synthesize_aws_mq(name, function, template=template, environment=environment)
+            elif cloud_provider == "gcp":
+                synthesize_gcp_mq(name, function, template=template)
+            elif cloud_provider == "azure":
+                pass
+        case "sql":
+            if cloud_provider == "aws":
+                pass
+            elif cloud_provider == "gcp":
+                synthesize_gcp_sql(name, function, template=template)
 
 
 def append_user_function(name, function, template, function_parameters):
@@ -66,6 +72,7 @@ def synthesize_azure_http(name, function, template):
     replace(new_file_path, "<route>", f"{name}-{function}")
     move(new_file_path, f"{destination}/function_app.py")
 
+
 def synthesize_http(name, function, template, event):
     function_call = f"{event}, headers, query_string_parameters"
     append_user_function(name, function, template, function_call)
@@ -91,3 +98,8 @@ def synthesize_gcp_mq(name, function, template):
 
 def synthesize_azure_mq(name, function, template):
     pass
+
+
+def synthesize_gcp_sql(name, function, template):
+    function_call = f"pool, headers, query_string_parameters"
+    append_user_function(name, function, template, function_call)

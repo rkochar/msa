@@ -5,7 +5,9 @@ config = Config("gcp")
 region = config.get("region")
 project = config.get("project")
 
-def create_sql_database(name, engine, engine_version, username="username", password="password", instance_class="db-f1-micro", opts=None):
+
+def create_sql_database(name, engine, engine_version, username="username", password="password",
+                        instance_class="db-f1-micro", environment={}, opts=None):
     database_version = engine.upper() + "_" + engine_version.replace(".", "_")
     cloud_sql_instance = DatabaseInstance(
         name,
@@ -31,7 +33,12 @@ def create_sql_database(name, engine, engine_version, username="username", passw
     export(f"sqldb-{name}-public-ip", cloud_sql_instance.public_ip_address)
     export(f"sqldb-{name}-private-ip", cloud_sql_instance.private_ip_address)
     if engine_version == "postgres":
-        export(f"sqldb-{name}", Output.concat("postgres://", username, ":", password, "@/", name, "?host=/cloudsql/", cloud_sql_instance.connection_name))
+        export(f"sqldb-{name}", Output.concat("postgres://", username, ":", password, "@/", name, "?host=/cloudsql/",
+                                              cloud_sql_instance.connection_name))
     elif engine_version == "mysql":
-        export(f"sqldb-{name}", Output.concat("mysql://", username, ":", password, "@/", name, "?host=/cloudsql/", cloud_sql_instance.connection_name))
+        export(f"sqldb-{name}", Output.concat("mysql://", username, ":", password, "@/", name, "?host=/cloudsql/",
+                                              cloud_sql_instance.connection_name))
 
+    environment["DATABASE_NAME"] = name
+    environment["INSTANCE_CONNECTION_NAME"] = cloud_sql_instance.connection_name
+    return cloud_sql_instance, environment
