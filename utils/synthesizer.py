@@ -31,6 +31,11 @@ def synthesize(handler, template, environment):
                 pass
             elif cloud_provider == "gcp":
                 synthesize_gcp_sql(name, function, template=template)
+        case "http_pub":
+            if cloud_provider == "aws":
+                synthesize_aws_http_pub(name, function, template, environment)
+            elif cloud_provider == "gcp":
+                synthesize_gcp_http_pub(name, function, template)
 
 
 def append_user_function(name, function, template, function_parameters):
@@ -88,7 +93,7 @@ def synthesize_aws_mq(name, function, template, environment):
     new_file_path = append_user_function(name, function, template, function_call)
 
     queue_name = next(k for k in environment.keys() if k.startswith("SQS_"))
-    replace(new_file_path, "queue_url = os.environ['SQS_']", f"queue_url = os.environ['{queue_name}']")
+    replace(new_file_path, 'queue_env_name = ""', f"queue_env_name = '{queue_name}'")
 
 
 def synthesize_gcp_mq(name, function, template):
@@ -102,4 +107,17 @@ def synthesize_azure_mq(name, function, template):
 
 def synthesize_gcp_sql(name, function, template):
     function_call = f"pool, headers, query_string_parameters"
+    append_user_function(name, function, template, function_call)
+
+
+def synthesize_aws_http_pub(name, function, template, environment):
+    function_call = f"headers, query_string_parameters"
+    new_file_path = append_user_function(name, function, template, function_call)
+
+    queue_name = next(k for k in environment.keys() if k.startswith("SQS_"))
+    replace(new_file_path, 'queue_env_name = ""', f"queue_env_name = '{queue_name}'")
+
+
+def synthesize_gcp_http_pub(name, function, template):
+    function_call = f"headers, query_string_parameters"
     append_user_function(name, function, template, function_call)

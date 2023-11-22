@@ -8,34 +8,12 @@ schemes:
 produces:
 - application/json
 paths:
-  /init:
+  /publish:
     get:
-      summary: Setup database or MVCC-DB
-      operationId: /init
+      summary: lambda that will publish param query and header head to a mq topic
+      operationId: /publish
       x-google-backend:
-        address: https://europe-west1-master-thesis-faas-monad.cloudfunctions.net/sqldb-init
-      responses:
-        '200':
-          description: TODO
-          schema:
-            type: string
-  /send:
-    get:
-      summary: Make a transaction
-      operationId: /send
-      x-google-backend:
-        address: https://europe-west1-master-thesis-faas-monad.cloudfunctions.net/worker
-      responses:
-        '200':
-          description: TODO
-          schema:
-            type: string
-  /status:
-    get:
-      summary: Get the current state of an account
-      operationId: /status
-      x-google-backend:
-        address: https://europe-west1-master-thesis-faas-monad.cloudfunctions.net/sqldb-get
+        address: https://europe-west1-master-thesis-faas-monad.cloudfunctions.net/publish
       responses:
         '200':
           description: TODO

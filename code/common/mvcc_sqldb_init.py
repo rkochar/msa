@@ -1,6 +1,5 @@
 def sqldb_init(pool, headers, query_parameters):
     with pool.connect() as db_conn:
-        print("connected")
         db_conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS bank_account"))
         db_conn.execute(
             sqlalchemy.text(
@@ -12,7 +11,6 @@ def sqldb_init(pool, headers, query_parameters):
         )
         db_conn.commit()
 
-        print("created table_i")
         for i in range(5):
             db_conn.execute(sqlalchemy.text(f"DROP TABLE IF EXISTS bank_account_{i}"))
             db_conn.execute(
@@ -29,14 +27,12 @@ def sqldb_init(pool, headers, query_parameters):
             "INSERT INTO bank_account (current_version, amount) VALUES (:current_version, :amount)"
         )
 
-        print("Setting default values")
         for i in range(5):
             db_conn.execute(
                 insert_statement, parameters={"current_version": 0, "amount": 10}
             )
         db_conn.commit()
 
-        print("init finished")
         insp = sqlalchemy.inspect(pool)
         print(f"tables: {insp.get_table_names()}")
 

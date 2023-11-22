@@ -1,10 +1,11 @@
 import boto3
-import os
+from os import getenv
 
 
 def template(event, context):
     sqs = boto3.client('sqs')
-    queue_url = os.environ['SQS_']
+    queue_env_name = ""
+    queue_url = getenv(queue_env_name)
 
     record = event.get("Records")[0]
     message = record.get('body')
@@ -15,6 +16,6 @@ def template(event, context):
     # Delete received message from queue
     sqs.delete_message(
         QueueUrl=queue_url,
-        ReceiptHandle=receipt_handle
+        ReceiptHandle=receipt_handle,
     )
     print('Received and deleted message: %s' % record)

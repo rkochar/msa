@@ -12,22 +12,24 @@ def create_mvccdb():
     apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-role")
     sql_init_lambda = m.create_lambda('sqldb-init', "mvcc_sqldb_init.sqldb_init", template="sql",
                                       environment=sqldb_lambda_environment, role=apigw_lambda_iam_role)
-    sql_get_lambda = m.create_lambda('sqldb-get', "mvcc_sqldb_get.sqldb_get", template="sql", environment=sqldb_lambda_environment, role=apigw_lambda_iam_role)
+    sql_get_lambda = m.create_lambda('sqldb-get', "mvcc_sqldb_get.sqldb_get", template="sql",
+                                     environment=sqldb_lambda_environment, role=apigw_lambda_iam_role)
 
     # Worker
-    # sqs_transaction, worker_environment = m.create_message_queue(topic_name='transaction')
-    # worker_lambda = m.create_lambda("worker", "mvcc_worker.worker", template="sql", environment=worker_environment, role=apigw_lambda_iam_role)
+    transaction_mq, worker_environment = m.create_message_queue(topic_name='transaction')
+    mq_lambda_iam_role = m.create_iam("apigw-lambda-iam-role", "lambda-role",
+                                      "lambda-role-attachment", "mq-policy", "mq-role")
+    worker_lambda = m.create_lambda('worker', "worker.todo", template="http_pub", environment=worker_environment,
+                                    role=mq_lambda_iam_role, opts=ResourceOptions(depends_on=[transaction_mq]))
+    control_lambda = m.create_lambda('control', "control.todo", template="mq", role=mq_lambda_iam_role,
+                                     mq_topic=transaction_mq, environment=worker_environment,
+                                     opts=ResourceOptions(depends_on=[transaction_mq]))
 
-    # lambda_role = m.create_role_policy_attachment("lambda-role-attachment", "sns-policy", "policy/aws/lambda-snssqs.json", "apigw-lambda-iam-role", "policy/aws/lambda-apigw.json")
-    #
-    # environment = {"SQS_URL": sqs_transaction.url}
-    # apigw_lambda_consumer = m.create_lambda('lambda-apigw-consumer', "consumer.consumer", lambda_role, environment, http_trigger=False, topic=sqs_transaction.topic, opts=ResourceOptions(depends_on=[sqs]))
-    #
-    # apigw_lambda_database = m.create_lambda('lambda-apigw-database', "consumer.consumer", lambda_role, environment, opts=ResourceOptions(depends_on=[sql]))
-    #
+    # TODO: remove SNS
+
     routes = [
         ("/init", "GET", sql_init_lambda, "sqldb-init", "Setup database or MVCC-DB"),
-        ("/send", "GET", "", "worker", "Make a transaction"),
+        ("/send", "GET", worker_lambda, "worker", "Make a transaction"),
         ("/status", "GET", sql_get_lambda, "sqldb-get", "Get the current state of an account")
     ]
-    m.create_apigw('apigw', routes)
+    m.create_apigw('apigw', routes, opts=ResourceOptions(depends_on=[sql_init_lambda, sql_get_lambda, control_lambda]))

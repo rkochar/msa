@@ -6,7 +6,7 @@ from utils.synthesizer import synthesize
 from aws import apigw as aws_apigw
 from aws import lambdafunction as aws_lambda
 from aws import iam as aws_iam
-from aws import snssqs as aws_snssqs
+from aws import sqs as aws_sqs
 from aws import sql as aws_sql
 
 from utils.gcp import setup_gcp
@@ -43,7 +43,7 @@ class Monad:
     def create_apigw(self, name, routes, opts=None):
         """
         Create APIGW.
-        AWS: API Gateway, GCP: API TODO, Azure: API Management
+        AWS: API Gateway, GCP: APIs, Azure: API Management
 
         :param name: of APIGW.
         :param routes: see README.md for description of Route. This is a tuple that matches Lambda with path that will trigger it.
@@ -78,7 +78,7 @@ class Monad:
         """
 
         synthesize(handler, template=template, environment=environment)
-        http_trigger = True if template == "http" or template == "sql" else False
+        http_trigger = True if template.startswith("http") or template == "sql" else False
 
         if self.cloud_provider == "aws":
             return aws_lambda.create_lambda(name, handler, role, environment,
@@ -93,11 +93,13 @@ class Monad:
                                               min_instance=min_instance, max_instance=max_instance,
                                               ram=ram, timeout_seconds=timeout_seconds, opts=opts)
         elif self.cloud_provider == "azure":
-            #blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=self.azure_config, opts=opts)
-            func = azure_functionapp.create_function_app(name, handler, environment, http_trigger=http_trigger, sqs=mq_topic, ram=ram, azure_config=self.azure_config, opts=opts)
+            # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=self.azure_config, opts=opts)
+            func = azure_functionapp.create_function_app(name, handler, environment, http_trigger=http_trigger,
+                                                         sqs=mq_topic, ram=ram, azure_config=self.azure_config,
+                                                         opts=opts)
             return func
 
-    def create_message_queue(self, topic_name, message_retention_seconds="60s", environment={}, opts=None):
+    def create_message_queue(self, topic_name, message_retention_seconds="60s", environment={}, fifo=True, opts=None):
         """
         Create Message Queue.
         AWS: SQS, GCP: Pub/Sub, Azure: tbd.
@@ -105,14 +107,16 @@ class Monad:
         :param topic_name: name of Message Queue
         :param message_retention_seconds: timeout of message
         :param environment: of Lambda that will be triggered by MQ (needed for AWS).
+        :param fifo: for AWS to force max 1 instance of Lambda (https://stackoverflow.com/a/71208857/12555857)
         :param opts: of Pulumi
         :return: Message Queue object.
         """
         if self.cloud_provider == "aws":
-            return aws_snssqs.create_sqs(topic_name, opts=opts)
+            return aws_sqs.create_sqs(topic_name, fifo=fifo, opts=opts)
         elif self.cloud_provider == "gcp":
             return gcp_pubsub.create_pubsub(topic_name, message_retention_seconds=message_retention_seconds,
-                                            opts=opts), environment
+                                            environment=environment,
+                                            opts=opts)
         elif self.cloud_provider == "azure":
             pass
 
@@ -132,7 +136,8 @@ class Monad:
         elif self.cloud_provider == "azure":
             pass
 
-    def create_sql_database(self, name, engine, engine_version, storage, username, password, instance_class, environment = {}, opts=None):
+    def create_sql_database(self, name, engine, engine_version, storage, username, password, instance_class,
+                            environment={}, opts=None):
         """
         Create SQL database.
         AWS: RDS, GCP: CloudSQL, Azure: tbd
@@ -162,9 +167,9 @@ class Monad:
     def create_sql_command(self, name, handler, template, environment={}, debug=False, opts=None):
         synthesize(handler, template=template, environment=environment)
         python_script_name = handler.replace(".", "_")
-        command = command_template(name, f"python3 {python_script_name}", f"./code/output/{self.cloud_provider}", debug, opts)
+        command = command_template(name, f"python3 {python_script_name}", f"./code/output/{self.cloud_provider}", debug,
+                                   opts=opts)
         return command
-
 
     def iam_role_json(self, name):
         """
