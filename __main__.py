@@ -5,6 +5,6 @@ from utils.chain import chain
 
 # apigw_foobar()
 # create_mq()
-chain()
-# create_mvccdb()
+# chain()
+create_mvccdb()
 

@@ -19,10 +19,10 @@ def create_mvccdb():
     transaction_mq, worker_environment = m.create_message_queue(topic_name='transaction')
     mq_lambda_iam_role = m.create_iam("apigw-lambda-iam-role", "lambda-role",
                                       "lambda-role-attachment", "mq-policy", "mq-role")
-    worker_lambda = m.create_lambda('worker', "worker.todo", template="http_pub", environment=worker_environment,
+    worker_lambda = m.create_lambda('worker', "worker.check_transaction", template="http_pub_sql", environment=worker_environment | sqldb_lambda_environment,
                                     role=mq_lambda_iam_role, opts=ResourceOptions(depends_on=[transaction_mq]))
-    control_lambda = m.create_lambda('control', "control.todo", template="mq", role=mq_lambda_iam_role,
-                                     mq_topic=transaction_mq, environment=worker_environment,
+    control_lambda = m.create_lambda('control', "control.confirm_transaction", template="mq_sql", role=mq_lambda_iam_role,
+                                     mq_topic=transaction_mq, environment=worker_environment | sqldb_lambda_environment,
                                      opts=ResourceOptions(depends_on=[transaction_mq]))
 
     # TODO: remove SNS
@@ -32,4 +32,4 @@ def create_mvccdb():
         ("/send", "GET", worker_lambda, "worker", "Make a transaction"),
         ("/status", "GET", sql_get_lambda, "sqldb-get", "Get the current state of an account")
     ]
-    m.create_apigw('apigw', routes, opts=ResourceOptions(depends_on=[sql_init_lambda, sql_get_lambda, control_lambda]))
+    m.create_apigw('apigw', routes, opts=ResourceOptions(depends_on=[sql_init_lambda, sql_get_lambda, worker_lambda]))

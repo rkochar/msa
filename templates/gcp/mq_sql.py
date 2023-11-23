@@ -2,23 +2,18 @@ import sqlalchemy
 import functions_framework
 from google.cloud.sql.connector import Connector, IPTypes
 from os import getenv
-
+from base64 import b64decode
 
 pool = None
 
-@functions_framework.http
-def template(request):
-    query_string_parameters = request.args
-    headers = request.headers
+@functions_framework.cloud_event
+def template(cloud_event):
+    message = b64decode(cloud_event.data["message"]["data"]).decode("utf-8")
 
-    instance_connection_name, dbname, username, password = getenv('INSTANCE_CONNECTION_NAME'), getenv(
-        "DATABASE_NAME"), getenv("USERNAME"), getenv("PASSWORD")
     global pool
-    pool = connect(instance_connection_name, username, password, dbname)
+    pool = connect(getenv('INSTANCE_CONNECTION_NAME'), getenv("USERNAME"), getenv("PASSWORD"), getenv("DATABASE_NAME"))
 
     body = ""
-
-    return body
 
 
 def connect(instance_connection, username, password, dbname):

@@ -17,4 +17,3 @@ def apigw_foobar():
     ]
     m.create_apigw('foobar', routes, opts=ResourceOptions(depends_on=[lambda_foo, lambda_bar],
                                                          replace_on_changes=["*"], delete_before_replace=True))
-

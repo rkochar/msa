@@ -13,29 +13,45 @@ def synthesize(handler, template, environment):
     name, function = handler.split(".")
     match template:
         case "http":
-            if cloud_provider == "aws":
-                synthesize_aws_http(name, function, template=template)
-            elif cloud_provider == "gcp":
-                synthesize_gcp_http(name, function, template=template)
-            elif cloud_provider == "azure":
-                synthesize_azure_http(name, function, template=template)
+            match cloud_provider:
+                case "aws":
+                    synthesize_aws_http(name, function, template=template)
+                case "gcp":
+                    synthesize_gcp_http(name, function, template=template)
+                case "azure":
+                    synthesize_azure_http(name, function, template=template)
         case "mq":
-            if cloud_provider == "aws":
-                synthesize_aws_mq(name, function, template=template, environment=environment)
-            elif cloud_provider == "gcp":
-                synthesize_gcp_mq(name, function, template=template)
-            elif cloud_provider == "azure":
-                pass
+            match cloud_provider:
+                case "aws":
+                    synthesize_aws_mq(name, function, template=template, environment=environment)
+                case "gcp":
+                    synthesize_gcp_mq(name, function, template=template)
+                case "azure":
+                    pass
         case "sql":
-            if cloud_provider == "aws":
-                pass
-            elif cloud_provider == "gcp":
-                synthesize_gcp_sql(name, function, template=template)
+            match cloud_provider:
+                case "aws":
+                    pass
+                case "gcp":
+                    synthesize_gcp_sql(name, function, template=template)
+        case "mq_sql":
+            match cloud_provider:
+                case "aws":
+                    pass
+                case "gcp":
+                    synthesize_gcp_mq_sql(name, function, template=template)
         case "http_pub":
-            if cloud_provider == "aws":
-                synthesize_aws_http_pub(name, function, template, environment)
-            elif cloud_provider == "gcp":
-                synthesize_gcp_http_pub(name, function, template)
+            match cloud_provider:
+                case "aws":
+                    synthesize_aws_http_pub(name, function, template, environment)
+                case "gcp":
+                    synthesize_gcp_http_pub(name, function, template)
+        case "http_pub_sql":
+            match cloud_provider:
+                case "aws":
+                    pass
+                case "gcp":
+                    synthesize_gcp_http_pub_sql(name, function, template)
 
 
 def append_user_function(name, function, template, function_parameters):
@@ -106,7 +122,7 @@ def synthesize_azure_mq(name, function, template):
 
 
 def synthesize_gcp_sql(name, function, template):
-    function_call = f"pool, headers, query_string_parameters"
+    function_call = f"headers, query_string_parameters"
     append_user_function(name, function, template, function_call)
 
 
@@ -120,4 +136,14 @@ def synthesize_aws_http_pub(name, function, template, environment):
 
 def synthesize_gcp_http_pub(name, function, template):
     function_call = f"headers, query_string_parameters"
+    append_user_function(name, function, template, function_call)
+
+
+def synthesize_gcp_http_pub_sql(name, function, template):
+    function_call = f"headers, query_string_parameters"
+    append_user_function(name, function, template, function_call)
+
+
+def synthesize_gcp_mq_sql(name, function, template):
+    function_call = f"message"
     append_user_function(name, function, template, function_call)

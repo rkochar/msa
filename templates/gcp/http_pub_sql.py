@@ -1,24 +1,23 @@
-import sqlalchemy
-import functions_framework
-from google.cloud.sql.connector import Connector, IPTypes
+from google.cloud import pubsub_v1
 from os import getenv
+import functions_framework
+import sqlalchemy
+from google.cloud.sql.connector import Connector, IPTypes
 
 
 pool = None
-
 @functions_framework.http
 def template(request):
     query_string_parameters = request.args
     headers = request.headers
 
-    instance_connection_name, dbname, username, password = getenv('INSTANCE_CONNECTION_NAME'), getenv(
-        "DATABASE_NAME"), getenv("USERNAME"), getenv("PASSWORD")
     global pool
-    pool = connect(instance_connection_name, username, password, dbname)
+    pool = connect(getenv('INSTANCE_CONNECTION_NAME'), getenv("USERNAME"), getenv("PASSWORD"), getenv("DATABASE_NAME"))
 
     body = ""
 
-    return body
+    future = pubsub_v1.PublisherClient().publish(getenv("TOPIC_ID"), bytes(body, "utf-8"))
+    return future.result()
 
 
 def connect(instance_connection, username, password, dbname):

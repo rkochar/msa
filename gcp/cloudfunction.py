@@ -39,7 +39,7 @@ def create_lambdav2(name, handler, role, environment, http_trigger, topic, sourc
                             all_traffic_on_latest_revision=True,
                         ),
                         event_trigger=event_trigger_config(http_trigger, topic),
-                        opts=opts
+                        opts=opts  # TODO: Put code archive in depends_on
                         )
     invoker = FunctionIamMember(f"{name}-invoker",
                                 project=function.project,
