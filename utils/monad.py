@@ -1,5 +1,8 @@
 from pulumi import Config
 
+from utils.aws import setup_aws
+from utils.azure import setup_azure
+from utils.gcp import setup_gcp
 from utils.helpers import merge_opts, command_template
 from utils.synthesizer import synthesize
 
@@ -9,14 +12,12 @@ from aws import iam as aws_iam
 from aws import sqs as aws_sqs
 from aws import sql as aws_sql
 
-from utils.gcp import setup_gcp
 from gcp import apigw as gcp_apigw
 from gcp import iam as gcp_iam
 from gcp import cloudfunction as gcp_lambda
 from gcp import pubsub as gcp_pubsub
 from gcp import cloudsql as gcp_sql
 
-from utils.azure import setup_azure
 from azure import functionapp as azure_functionapp
 from azure import storageblob as azure_storageblob
 from azure import apimanagement as azure_apigw
@@ -33,10 +34,10 @@ class Monad:
         config = Config()
         self.cloud_provider = config.require("cloud_provider")
 
-        if self.cloud_provider == "gcp":
+        if self.cloud_provider == "aws":
+            self.aws_config = setup_aws()
+        elif self.cloud_provider == "gcp":
             self.google_provider, self.gcp_lambda_bucket, self.gcp_lambda_archive = setup_gcp()
-        elif self.cloud_provider == "aws":
-            pass
         elif self.cloud_provider == "azure":
             self.azure_config = setup_azure()  # resource_group, account, storage_container, service_plan
 
@@ -57,7 +58,7 @@ class Monad:
         elif self.cloud_provider == "azure":
             return azure_apigw.create_apigw(name, routes, azure_config=self.azure_config, opts=opts)
 
-    def create_lambda(self, name, handler, role=None, environment={}, template="http", mq_topic=None, min_instance=1,
+    def create_lambda(self, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1,
                       max_instance=3, ram=256, timeout_seconds=60, opts=None):
         """
         Create Lambda and synthesize it's code.
@@ -82,9 +83,9 @@ class Monad:
 
         if self.cloud_provider == "aws":
             return aws_lambda.create_lambda(name, handler, role, environment,
-                                            http_trigger=http_trigger, sqs=mq_topic,
+                                            template, http_trigger=http_trigger, sqs=mq_topic, sqldb=sqldb,
                                             ram=ram, timeout_seconds=timeout_seconds,
-                                            opts=opts)
+                                            aws_config=self.aws_config, opts=opts)
         elif self.cloud_provider == "gcp":
             return gcp_lambda.create_lambdav2(name, handler, role, environment,
                                               http_trigger=http_trigger, topic=mq_topic,
@@ -136,8 +137,7 @@ class Monad:
         elif self.cloud_provider == "azure":
             pass
 
-    def create_sql_database(self, name, engine, engine_version, storage, username, password, instance_class,
-                            environment={}, opts=None):
+    def create_sql_database(self, name, engine, engine_version, storage, username, password, instance_class, environment={}, opts=None):
         """
         Create SQL database.
         AWS: RDS, GCP: CloudSQL, Azure: tbd
@@ -157,7 +157,7 @@ class Monad:
         environment["USERNAME"], environment["PASSWORD"] = username, password
         if self.cloud_provider == "aws":
             return aws_sql.create_sql_database(name, engine, engine_version, storage, username,
-                                               password, instance_class, environment, opts=opts)
+                                               password, instance_class, environment, aws_config=self.aws_config, opts=opts)
         elif self.cloud_provider == "gcp":
             return gcp_sql.create_sql_database(name, engine, engine_version, username,
                                                password, instance_class, environment, opts=opts)
@@ -183,6 +183,8 @@ class Monad:
                 return "policy/aws/lambda-apigw.json"
             elif name == "mq-role":
                 return "policy/aws/lambda-mq.json"
+            elif name == "sql-role":
+                return "policy/aws/lambda-sql.json"
         elif self.cloud_provider == "gcp":
             if name == "lambda-role":
                 return "roles/cloudfunctions.invoker"

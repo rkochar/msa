@@ -6,8 +6,7 @@ def create_mvccdb():
     m = Monad()
 
     # SQL database to confirm transactions
-    sqldb, sqldb_lambda_environment = m.create_sql_database("foobar", "mysql", "8.0.34", 10, "foouser", "foopass123",
-                                                            "small")
+    sqldb, sqldb_lambda_environment = m.create_sql_database("foobar", "mysql", "8.0.34", 10, "foouser", "foopass123", "small")
 
     apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-role")
     sql_init_lambda = m.create_lambda('sqldb-init', "mvcc_sqldb_init.sqldb_init", template="sql",

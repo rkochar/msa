@@ -1,9 +1,11 @@
 from pulumi_aws.rds import Instance, Proxy, ProxyArgs, ProxyAuthArgs
 from pulumi import export
+from aws.secretsmanager import create_secret
+from json import dumps
 
 
 def create_sql_database(name, engine, engine_version, storage, username, password, instance_class="db.t3.micro",
-                        opts=None):
+                        environment={}, aws_config=None, opts=None):
     """
     Create SQL database.
 
@@ -14,45 +16,56 @@ def create_sql_database(name, engine, engine_version, storage, username, passwor
     :param username: of database
     :param password: of database
     :param instance_class: EC2 instance type
+    :param aws_config:
     :param opts: of Pulumi
     :return: database object
     """
-    sqldb = Instance(name,
-                     name=name,
-                     engine=engine,
-                     engine_version=engine_version,
-                     allocated_storage=storage,
-                     instance_class=instance_class,
-                     username=username,
-                     password=password,
-                     skip_final_snapshot=True,
-                     publicly_accessible=False,
-                     opts=opts
-                     )
-    export(f"sqldb-{name}-endpoint", sqldb.endpoint)
-    export(f"sqldb-{name}-address", sqldb.address)
-    return sqldb
+    vpc, subnet, subnet_group = aws_config
+    rds = Instance(name,
+                   engine=engine,
+                   engine_version=engine_version,
+                   allocated_storage=storage,
+                   instance_class=instance_class,
+                   username=username,
+                   password=password,
+                   db_name=name,
+                   skip_final_snapshot=True,
+                   publicly_accessible=False,
+                   db_subnet_group_name=subnet_group.name,
+                   opts=opts
+                   )
+    export(f"rds-{name}-endpoint", rds.endpoint)
+    export(f"rds-{name}-address", rds.address)
+
+    # secret_string = create_rds_secret(rds, username, password, engine)
+    # secret = create_secret(f"sqldb-{name}", secret_string=secret_string, opts=opts)
+    # create_proxy(name, username, engine, secret, opts=opts)
+    return rds, environment
 
 
-def create_rds_proxy(name, engine, username, password):
-    """
-    RDS proxy to go through Security Group of database
+def create_rds_secret(rds, username, password, engine):
+    secret = {
+        "username": username,
+        "password": password,
+        "engine": engine,
+        # "host": rds.endpoint,
+        # "port": rds.port
+    }
+    # secret["dbname"] = rds.db_name
 
-    :param name: of proxy
-    :param engine: of database
-    :param username: of database
-    :param password: of database
-    :return: rds proxy object
-    """
-    rds_proxy = Proxy(f"sqldb-{name}-proxy",
-                      debug_logging=False,
-                      engine_family=engine.upper(),
-                      idle_client_timeout=300,
-                      require_tls=False,
-                      auths=[ProxyAuthArgs(
-                          username=username,
-                          client_password_auth_type="MYSQL_NATIVE_PASSWORD"  # TODO: Clean up
-                      )]
-                      )
-    export(f"sqldb-{name}-proxy-endpoint", rds_proxy.foo)
-    return rds_proxy
+    return dumps(secret)
+
+
+def create_proxy(name, username, engine, secret, opts=None):
+    proxy = Proxy(f"{name}-proxy",
+                  engine_family=engine.upper(),
+                  auths=[ProxyAuthArgs(
+                      auth_scheme="SECRETS",
+                      iam_auth="DISABLED",
+                      secret_arn=secret.arn,
+                      username=username
+                  )],
+                  opts=opts
+                  )
+    export(f"rds-{name}-proxy-endpoint", proxy.endpoint)
+    return proxy
