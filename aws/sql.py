@@ -1,7 +1,7 @@
-from pulumi_aws.rds import Instance, Proxy, ProxyArgs, ProxyAuthArgs
 from pulumi import export
+from pulumi_aws.rds import Instance
+
 from aws.secretsmanager import create_secret
-from json import dumps
 
 
 def create_sql_database(name, engine, engine_version, storage, username, password, instance_class="db.t3.micro",
@@ -16,6 +16,7 @@ def create_sql_database(name, engine, engine_version, storage, username, passwor
     :param username: of database
     :param password: of database
     :param instance_class: EC2 instance type
+    :param environment:
     :param aws_config:
     :param opts: of Pulumi
     :return: database object
@@ -37,35 +38,8 @@ def create_sql_database(name, engine, engine_version, storage, username, passwor
     export(f"rds-{name}-endpoint", rds.endpoint)
     export(f"rds-{name}-address", rds.address)
 
-    # secret_string = create_rds_secret(rds, username, password, engine)
-    # secret = create_secret(f"sqldb-{name}", secret_string=secret_string, opts=opts)
-    # create_proxy(name, username, engine, secret, opts=opts)
+    environment["SQLDB_HOST"] = rds.address
+    environment["SQLDB_PORT"] = rds.port
+    environment["SQLDB_DBNAME"] = name
+
     return rds, environment
-
-
-def create_rds_secret(rds, username, password, engine):
-    secret = {
-        "username": username,
-        "password": password,
-        "engine": engine,
-        # "host": rds.endpoint,
-        # "port": rds.port
-    }
-    # secret["dbname"] = rds.db_name
-
-    return dumps(secret)
-
-
-def create_proxy(name, username, engine, secret, opts=None):
-    proxy = Proxy(f"{name}-proxy",
-                  engine_family=engine.upper(),
-                  auths=[ProxyAuthArgs(
-                      auth_scheme="SECRETS",
-                      iam_auth="DISABLED",
-                      secret_arn=secret.arn,
-                      username=username
-                  )],
-                  opts=opts
-                  )
-    export(f"rds-{name}-proxy-endpoint", proxy.endpoint)
-    return proxy

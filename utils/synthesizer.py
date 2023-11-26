@@ -57,7 +57,7 @@ def synthesize(handler, template, environment):
 def append_user_function(name, function, template, function_parameters):
     new_file_path = f"./code/output/{cloud_provider}/{name}-{function}.py"
     old_file_path = f"./code/common/{name}.py"
-    copyfile(f"./templates/{cloud_provider}/{template}.py", new_file_path)
+    copyfile(f"./code/templates/{cloud_provider}/{template}.py", new_file_path)
 
     replace(new_file_path, 'body = ""', f"body = {function}({function_parameters})")
 
@@ -84,7 +84,7 @@ def synthesize_azure_http(name, function, template):
     destination = f"./code/output/azure/{name}-{function}"
     if path.exists(destination):
         rmtree(destination)
-    copytree(f"./templates/azure/{template}", destination)
+    copytree(f"./code/templates/azure/{template}", destination)
 
     function_call = "req, headers, query_string_parameters"
     template = f"{template}/function_app"

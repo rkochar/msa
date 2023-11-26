@@ -6,7 +6,7 @@ from utils.monad import Monad
 def apigw_foobar():
     m = Monad()
 
-    apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-role")
+    apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-basic-role")
 
     lambda_foo = m.create_lambda('foobar-foo', "foobar.foo", template="http", role=apigw_lambda_iam_role)
     lambda_bar = m.create_lambda('foobar-bar', "foobar.bar", template="http", role=apigw_lambda_iam_role)

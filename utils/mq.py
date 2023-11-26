@@ -11,7 +11,7 @@ def create_mq():
     sqldb = m.create_sql_database("foobar", "mysql", "8.0.34", 10, "foouser", "foopass123", "small")
 
     mq_lambda_iam_role = m.create_iam("apigw-lambda-iam-role", "lambda-role",
-                                      "lambda-role-attachment", "sns-policy", "mq-role")
+                                      "lambda-role-attachment", "sns-policy", "message-queue-policy")
 
     lambda_mq_foo = m.create_lambda('lambda-mq', "mq.print_message", role=mq_lambda_iam_role, environment=environment,
                                     http_trigger=False, mq_topic=sqs_transaction,
