@@ -12,7 +12,7 @@ def template(request):
     headers = request.headers
 
     instance_connection_name, dbname, username, password = getenv('INSTANCE_CONNECTION_NAME'), getenv(
-        "DATABASE_NAME"), getenv("USERNAME"), getenv("PASSWORD")
+        "DATABASE_NAME"), getenv("SQLDB_USERNAME"), getenv("SQLDB_PASSWORD")
     global pool
     pool = connect(instance_connection_name, username, password, dbname)
 

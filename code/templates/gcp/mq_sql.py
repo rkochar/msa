@@ -10,7 +10,7 @@ pool = None
 def template(cloud_event):
     message = b64decode(cloud_event.data["message"]["data"]).decode("utf-8")
 
-    global pool
+    global pool  # TODO: refactor pool
     pool = connect(getenv('INSTANCE_CONNECTION_NAME'), getenv("USERNAME"), getenv("PASSWORD"), getenv("DATABASE_NAME"))
 
     body = ""

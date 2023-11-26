@@ -3,7 +3,7 @@ from os import path
 
 from pulumi import Config
 
-from utils.helpers import replace
+from utils.helpers import replace, delete_last_n_lines
 
 config = Config()
 cloud_provider = config.get("cloud_provider")
@@ -11,53 +11,61 @@ cloud_provider = config.get("cloud_provider")
 
 def synthesize(handler, template, environment):
     name, function = handler.split(".")
-    match template:
-        case "http":
-            match cloud_provider:
-                case "aws":
-                    synthesize_aws_http(name, function, template=template)
-                case "gcp":
-                    synthesize_gcp_http(name, function, template=template)
-                case "azure":
-                    synthesize_azure_http(name, function, template=template)
-        case "mq":
-            match cloud_provider:
-                case "aws":
-                    synthesize_aws_mq(name, function, template=template, environment=environment)
-                case "gcp":
-                    synthesize_gcp_mq(name, function, template=template)
-                case "azure":
-                    pass
-        case "sql":
-            match cloud_provider:
-                case "aws":
-                    pass
-                case "gcp":
-                    synthesize_gcp_sql(name, function, template=template)
-        case "mq_sql":
-            match cloud_provider:
-                case "aws":
-                    pass
-                case "gcp":
-                    synthesize_gcp_mq_sql(name, function, template=template)
-        case "http_pub":
-            match cloud_provider:
-                case "aws":
-                    synthesize_aws_http_pub(name, function, template, environment)
-                case "gcp":
-                    synthesize_gcp_http_pub(name, function, template)
-        case "http_pub_sql":
-            match cloud_provider:
-                case "aws":
-                    pass
-                case "gcp":
-                    synthesize_gcp_http_pub_sql(name, function, template)
+    stub = template
+    if "pub" in template:
+        stub = template[:template.rfind("_")]
+    match cloud_provider:
+        case "aws":
+            copy_aws_template(name, function, template, stub)
+        case "gcp":
+            copy_gcp_template(name, function, template, stub)
+        case "azure":
+            pass
 
 
-def append_user_function(name, function, template, function_parameters):
+def copy_gcp_template(name, function, template, stub):
+    # Copy stub
     new_file_path = f"./code/output/{cloud_provider}/{name}-{function}.py"
+    copyfile(f"./code/templates/test{cloud_provider}/{stub}.py", new_file_path)
+
+    if template.endswith("_pub"):
+        pub = open("./code/templates/testgcp/pub.txt", "r").read()
+        replace(new_file_path, 'body = ""', pub)
+        delete_last_n_lines(new_file_path, 3)
+
+    if "sql" in template:
+        append_file(new_file_path, f"./code/templates/testgcp/sql.py")
+
+    function_parameters = get_gcp_function_parameters(template)
+    append_user_function(name, function, new_file_path, function_parameters)
+
+    return new_file_path
+
+
+def get_gcp_function_parameters(template):
+    if template.startswith("http"):
+        return "headers, query_parameters"
+    elif template.startswith("mq"):
+        return "message"
+
+
+def copy_aws_template(name, function, template, stub):
+    new_file_path = f"./code/output/{cloud_provider}/{name}-{function}.py"
+    copyfile(f"./code/templates/{cloud_provider}/{stub}.py", new_file_path)
+
+
+def append_file(new_file_path, old_file_path):
+    new_file = open(new_file_path, "a+")
+    old_file = open(old_file_path, "r")
+    new_file.write("\n\n")
+    new_file.write(old_file.read())
+
+    new_file.close()
+    old_file.close()
+
+
+def append_user_function(name, function, new_file_path, function_parameters):
     old_file_path = f"./code/common/{name}.py"
-    copyfile(f"./code/templates/{cloud_provider}/{template}.py", new_file_path)
 
     replace(new_file_path, 'body = ""', f"body = {function}({function_parameters})")
 
@@ -74,10 +82,6 @@ def append_user_function(name, function, template, function_parameters):
 
 def synthesize_aws_http(name, function, template):
     return synthesize_http(name, function, template, event="event")
-
-
-def synthesize_gcp_http(name, function, template):
-    return synthesize_http(name, function, template, event="request")
 
 
 def synthesize_azure_http(name, function, template):
@@ -112,18 +116,8 @@ def synthesize_aws_mq(name, function, template, environment):
     replace(new_file_path, 'queue_env_name = ""', f"queue_env_name = '{queue_name}'")
 
 
-def synthesize_gcp_mq(name, function, template):
-    function_call = "message"
-    append_user_function(name, function, template, function_call)
-
-
 def synthesize_azure_mq(name, function, template):
     pass
-
-
-def synthesize_gcp_sql(name, function, template):
-    function_call = f"headers, query_string_parameters"
-    append_user_function(name, function, template, function_call)
 
 
 def synthesize_aws_http_pub(name, function, template, environment):
@@ -132,18 +126,3 @@ def synthesize_aws_http_pub(name, function, template, environment):
 
     queue_name = next(k for k in environment.keys() if k.startswith("SQS_"))
     replace(new_file_path, 'queue_env_name = ""', f"queue_env_name = '{queue_name}'")
-
-
-def synthesize_gcp_http_pub(name, function, template):
-    function_call = f"headers, query_string_parameters"
-    append_user_function(name, function, template, function_call)
-
-
-def synthesize_gcp_http_pub_sql(name, function, template):
-    function_call = f"headers, query_string_parameters"
-    append_user_function(name, function, template, function_call)
-
-
-def synthesize_gcp_mq_sql(name, function, template):
-    function_call = f"message"
-    append_user_function(name, function, template, function_call)

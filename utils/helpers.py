@@ -70,3 +70,13 @@ def command_template(name, create, path, debug=False, opts=None):
     if debug:
         export(f"command-output-{name}", command.stdout)
     return command
+
+
+def delete_last_n_lines(file, N):
+    with open(file) as f1:
+        lines = f1.readlines()
+
+    with open(file, 'w') as f2:
+        f2.writelines(lines[:-N])
+    f1.close()
+    f2.close()
