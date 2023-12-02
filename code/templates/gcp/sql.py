@@ -1,31 +1,12 @@
 import sqlalchemy
-import functions_framework
-from google.cloud.sql.connector import Connector, IPTypes
-from os import getenv
-
-
-pool = None
-
-@functions_framework.http
-def template(request):
-    query_string_parameters = request.args
-    headers = request.headers
-
-    instance_connection_name, dbname, username, password = getenv('INSTANCE_CONNECTION_NAME'), getenv(
-        "DATABASE_NAME"), getenv("SQLDB_USERNAME"), getenv("SQLDB_PASSWORD")
-    global pool
-    pool = connect(instance_connection_name, username, password, dbname)
-
-    body = ""
-
-    return body
+from google.cloud.sql.connector import Connector
 
 
 def connect(instance_connection, username, password, dbname):
     def getconn():
         conn = Connector().connect(
             instance_connection,
-            "pymysql",
+            driver="pymysql",
             user=username,
             password=password,
             db=dbname
@@ -39,7 +20,10 @@ def connect(instance_connection, username, password, dbname):
 
 
 def execute_sql_query(queries):
-    global pool
+    instance_connection_name, dbname, username, password = getenv('INSTANCE_CONNECTION_NAME'), getenv(
+        "DATABASE_NAME"), getenv("SQLDB_USERNAME"), getenv("SQLDB_PASSWORD")
+    pool = connect(instance_connection_name, username, password, dbname)
+
     with pool.connect() as db_conn:
         results = []
         for query in queries:

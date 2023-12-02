@@ -1,4 +1,3 @@
-from os import getenv
 import pymysql
 from sys import exit
 
@@ -28,9 +27,12 @@ def execute_sql_query(queries):
         results = []
         for query in queries:
             if "SELECT" in query.upper():
-                results.append(cur.execute(query).fetchall())
+                cur.execute(query)
+                conn.commit()
+                for row in cur:
+                    results.append(row)
             else:
-                results.append(cur.execute(query))
-        conn.commit()
+                cur.execute(query)
+                conn.commit()
         cur.close()
-        return results
+        return [results]

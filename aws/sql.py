@@ -21,7 +21,7 @@ def create_sql_database(name, engine, engine_version, storage, username, passwor
     :param opts: of Pulumi
     :return: database object
     """
-    vpc, subnet, subnet_group = aws_config
+    _, _, subnet_group, _ = aws_config
     rds = Instance(name,
                    engine=engine,
                    engine_version=engine_version,

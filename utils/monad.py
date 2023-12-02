@@ -27,7 +27,7 @@ class Monad:
     def __init__(self):
         """
         Setup cloud environments.
-        AWS does not require setup.
+        AWS requires VPC for RDS and Endpoint for SQS if Lambda is in VPC. Returns vpc, security_group, subnet, subnet_group, vpc_endpoint
         GCP requires a Provider. In addition, code of Lambda is added to a Storage bucket. # TODO: Make code optional.
         Azure requires a Resource Group, Storage Account, Storage Container and Service Plan.
         """

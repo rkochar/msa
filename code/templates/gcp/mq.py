@@ -1,5 +1,7 @@
 import base64
 import functions_framework
+from os import getenv
+
 
 
 @functions_framework.cloud_event

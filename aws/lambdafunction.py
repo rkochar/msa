@@ -22,12 +22,12 @@ def create_lambda(name, handler, role, environment, template, http_trigger=True,
     :param opts: of Pulumi
     :return: Lambda object
     """
-    vpc, subnet, subnet_group = aws_config
+    vpc, _, subnet_group, _ = aws_config
     handler = handler.replace(".", "-") + ".template"
 
     vpc_config = None if "sql" not in template else {
         "security_group_ids": [vpc.default_security_group_id],
-        "subnet_ids": [subnet.id]
+        "subnet_ids": subnet_group.subnet_ids
     }
 
     lambda_function = Function(name,
@@ -45,7 +45,7 @@ def create_lambda(name, handler, role, environment, template, http_trigger=True,
                                vpc_config=vpc_config,
                                opts=opts
                                )
-    if "mq" in template:
+    if template.startswith("mq"):
         mapping = EventSourceMapping(f"{name}-event-trigger",
                                      event_source_arn=sqs.arn,
                                      function_name=lambda_function.arn

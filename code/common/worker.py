@@ -1,5 +1,5 @@
 def check_transaction(headers, query_parameters):
-    sender = int(headers.get("sender")) or -1
+    sender = int(headers.get("sender")) or -1  # TODO: handle input better
     receiver = int(headers.get("receiver")) or -1
     amount = int(headers.get("amount")) or -1
 

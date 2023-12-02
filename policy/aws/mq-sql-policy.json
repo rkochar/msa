@@ -16,6 +16,11 @@
                 "ec2:DescribeSubnets",
                 "ec2:DescribeVpcs",
 
+                "sqs:ReceiveMessage",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes",
+                "sqs:SendMessage",
+
                 "logs:CreateLogGroup",
                 "logs:CreateLogStream",
                 "logs:PutLogEvents"
