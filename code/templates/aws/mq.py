@@ -4,6 +4,7 @@ from os import getenv
 
 
 def template(event, context):
+    print("starting")
     sqs = boto3.client('sqs')
     queue_name = getenv('QUEUE_NAME')
     queue_url = getenv(f"SQS_{queue_name}")

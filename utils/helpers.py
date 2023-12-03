@@ -34,11 +34,11 @@ def deploy_function_code(name, handler, opts):
     export(f"function-app-{name}-endpoint", endpoint)
 
 
-def command_template(name, create, path, debug=False, opts=None):
+def bash_command(name, command, path, debug=False, opts=None):
     command = Command(f"command-{name}",
                       interpreter=["/bin/sh", "-c"],
                       dir=path,
-                      create=create,
+                      create=command,
                       opts=opts
                       )
     if debug:
@@ -54,3 +54,8 @@ def delete_last_n_lines(file, N):
         f2.writelines(lines[:-N])
     f1.close()
     f2.close()
+
+
+def flatten(d):
+    for i in d:
+        yield from [i] if not isinstance(i, tuple) else flatten(i)

@@ -3,7 +3,7 @@ from pulumi import Config
 from utils.aws import setup_aws
 from utils.azure import setup_azure
 from utils.gcp import setup_gcp
-from utils.helpers import merge_opts, command_template
+from utils.helpers import merge_opts, bash_command, flatten
 from utils.synthesizer import synthesize
 
 from aws import apigw as aws_apigw
@@ -27,7 +27,7 @@ class Monad:
     def __init__(self):
         """
         Setup cloud environments.
-        AWS requires VPC for RDS and Endpoint for SQS if Lambda is in VPC. Returns vpc, security_group, subnet, subnet_group, vpc_endpoint
+        AWS requires VPC for RDS and Endpoint for SQS if Lambda is in VPC. Returns s3 code bucket, vpc, security_group, subnet, subnet_group, vpc_endpoint
         GCP requires a Provider. In addition, code of Lambda is added to a Storage bucket. # TODO: Make code optional.
         Azure requires a Resource Group, Storage Account, Storage Container and Service Plan.
         """
@@ -40,7 +40,7 @@ class Monad:
             case "gcp":
                 self.google_provider, self.gcp_lambda_bucket, self.gcp_lambda_archive = setup_gcp()  # TODO: Move into gcp_config
             case "azure":
-                self.azure_config = setup_azure()  # resource_group, account, storage_container, service_plan
+                self.azure_config = setup_azure()
 
     def create_apigw(self, name, routes, opts=None):
         """
@@ -60,12 +60,14 @@ class Monad:
             case "azure":
                 return azure_apigw.create_apigw(name, routes, azure_config=self.azure_config, opts=opts)
 
-    def create_lambda(self, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1,
-                      max_instance=3, ram=256, timeout_seconds=60, opts=None):
+    def create_lambda(self, code_path, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1,
+                      max_instance=3, ram=256, timeout_seconds=60, imports=False, opts=None):
         """
         Create Lambda and synthesize it's code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
 
+        :param imports:
+        :param code_path:
         :param name: of Lambda
         :param handler: method that will be called when a Lambda is triggered.
         :param role: IAM role of Lambda
@@ -80,22 +82,23 @@ class Monad:
         :return: Lambda object
         """
 
-        synthesize(handler, template=template, environment=environment)
+        synthesize(code_path, handler, template=template, imports=imports)
         http_trigger = True if template.startswith("http") or template == "sql" else False
 
         match self.cloud_provider:
             case "aws":
-                return aws_lambda.create_lambda(name, handler, role, environment,
+                return aws_lambda.create_lambda(code_path, name, handler, role, environment,
                                                 template, http_trigger=http_trigger, sqs=mq_topic, sqldb=sqldb,
                                                 ram=ram, timeout_seconds=timeout_seconds,
-                                                aws_config=self.aws_config, opts=opts)
+                                                aws_config=self.aws_config, imports=imports, opts=opts)
             case "gcp":
                 return gcp_lambda.create_lambdav2(name, handler, role, environment,
                                                   http_trigger=http_trigger, topic=mq_topic,
-                                                  source_bucket=self.gcp_lambda_bucket,
+                                                  source_bucket=self.gcp_lambda_bucket,  # TODO: Change
                                                   bucket_archive=self.gcp_lambda_archive,
                                                   min_instance=min_instance, max_instance=max_instance,
-                                                  ram=ram, timeout_seconds=timeout_seconds, opts=opts)
+                                                  ram=ram, timeout_seconds=timeout_seconds,
+                                                  imports=imports, opts=opts)
             case "azure":
                 # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=self.azure_config, opts=opts)
                 func = azure_functionapp.create_function_app(name, handler, environment, http_trigger=http_trigger,
@@ -172,10 +175,10 @@ class Monad:
                 pass
 
     def create_sql_command(self, name, handler, template, environment={}, debug=False, opts=None):
-        synthesize(handler, template=template, environment=environment)
+        synthesize(handler, template=template)
         python_script_name = handler.replace(".", "_")
-        command = command_template(name, f"python3 {python_script_name}", f"./code/output/{self.cloud_provider}", debug,
-                                   opts=opts)
+        command = bash_command(name, f"python3 {python_script_name}", f"./code/output/{self.cloud_provider}", debug,
+                               opts=opts)
         return command
 
     def iam_role_json(self, name):  # TODO: Use policyname as filemame

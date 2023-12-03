@@ -10,7 +10,7 @@ project = config.get("project")
 
 def create_lambdav2(name, handler, role, environment, http_trigger, topic, source_bucket, bucket_archive,
                     min_instance=1, max_instance=3,
-                    ram="256M", timeout_seconds=60, runtime="python310", opts=None):
+                    ram="256M", timeout_seconds=60, runtime="python310", imports=None, opts=None):
     function = Function(name,
                         name=name,
                         location=region,

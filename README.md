@@ -30,3 +30,16 @@ Input: (str: topic_name)
 Input: (str: name, str: engine, str: engine_version, int: storage, str: username, str: password, str: server class)
 GCP does not use amount of storage (default 10, of server class small). engine is "mysql" or "postgres". Enter version as "major.minor.patch".
 AWS will export an endpoint. GCP will export public, private ip addresses and an endpoint.
+
+## Pulumi Config
+```commandline
+pulumi config set cloud:provider <aws or gcp or azure>
+pulumi config set architecture <arm64 or x86_64>
+
+pulumi config set aws:region <region>
+
+pulumi config set gcp:region <region>
+pulumi config set gcp:project <project name>
+
+pulumi config set azure:location "West Europe"
+```
