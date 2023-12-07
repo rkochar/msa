@@ -2,15 +2,18 @@ from pulumi_gcp.cloudfunctionsv2 import Function, FunctionIamMember, FunctionBui
     FunctionBuildConfigSourceArgs, FunctionBuildConfigSourceStorageSourceArgs, FunctionServiceConfigArgs, \
     FunctionEventTriggerArgs
 from pulumi import Config, Output
+from gcp.cloudstorage import create_bucket_object
 
 config = Config("gcp")
 region = config.get("region")
 project = config.get("project")
 
 
-def create_lambdav2(name, handler, role, environment, http_trigger, topic, source_bucket, bucket_archive,
-                    min_instance=1, max_instance=3,
-                    ram="256M", timeout_seconds=60, runtime="python310", imports=None, opts=None):
+def create_lambdav2(code_path, name, handler, role, environment, http_trigger, topic, min_instance=1, max_instance=3,
+                    ram="256M", timeout_seconds=60, runtime="python310", imports=None, gcp_config=None, opts=None):
+    bucket = gcp_config["code_bucket"]
+    bucket_object = create_bucket_object(f"{name}-object", bucket, f"./code/output/gcp/{code_path}/")
+    # TODO: synthesize imports
     function = Function(name,
                         name=name,
                         location=region,
@@ -19,12 +22,12 @@ def create_lambdav2(name, handler, role, environment, http_trigger, topic, sourc
                             runtime=runtime,
                             entry_point="template",
                             environment_variables={
-                                "GOOGLE_FUNCTION_SOURCE": handler.replace(".", "-") + get_file_extension(runtime)
+                                "GOOGLE_FUNCTION_SOURCE": handler.split(".")[0] + get_file_extension(runtime)
                             },
                             source=FunctionBuildConfigSourceArgs(
                                 storage_source=FunctionBuildConfigSourceStorageSourceArgs(
-                                    bucket=source_bucket.name,
-                                    object=bucket_archive.name,
+                                    bucket=bucket.name,
+                                    object=bucket_object.name,
                                 ),
                             ),
                         ),
@@ -65,3 +68,4 @@ def event_trigger_config(http_trigger, topic):
 def get_file_extension(runtime: str):
     if runtime.startswith("python"):
         return ".py"
+

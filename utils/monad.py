@@ -11,6 +11,7 @@ from aws import lambdafunction as aws_lambda
 from aws import iam as aws_iam
 from aws import sqs as aws_sqs
 from aws import sql as aws_sql
+from aws import vpc as aws_vpc
 
 from gcp import apigw as gcp_apigw
 from gcp import iam as gcp_iam
@@ -38,9 +39,27 @@ class Monad:
             case "aws":
                 self.aws_config = setup_aws()
             case "gcp":
-                self.google_provider, self.gcp_lambda_bucket, self.gcp_lambda_archive = setup_gcp()  # TODO: Move into gcp_config
+                self.gcp_config = setup_gcp()
             case "azure":
                 self.azure_config = setup_azure()
+
+
+    def create_vpc(self, name):
+        match self.cloud_provider:
+            case "aws":
+                vpc, subnet_a, subnet_b, subnet_group = aws_vpc.create_vpc_and_subnet(name)
+                self.aws_config["vpc"] = vpc
+                self.aws_config["subnet_a"] = subnet_a
+                self.aws_config["subnet_b"] = subnet_b
+                self.aws_config["subnet_group"] = subnet_group
+
+
+    def create_vpc_endpoint(self, name, service):
+        match self.cloud_provider:
+            case "aws":
+                vpc_endpoint = aws_vpc.create_vpc_endpoint(name, service, self.aws_config)
+                self.aws_config["vpc_endpoint"] = vpc_endpoint
+
 
     def create_apigw(self, name, routes, opts=None):
         """
@@ -56,12 +75,13 @@ class Monad:
             case "aws":
                 return aws_apigw.create_apigw(name, routes, opts=opts)
             case "gcp":
-                return gcp_apigw.create_apigw(name, routes, opts=merge_opts(self.google_provider, opts))
+                return gcp_apigw.create_apigw(name, routes, opts=merge_opts(self.gcp_config.get("google_provider"), opts))
             case "azure":
                 return azure_apigw.create_apigw(name, routes, azure_config=self.azure_config, opts=opts)
 
+
     def create_lambda(self, code_path, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1,
-                      max_instance=3, ram=256, timeout_seconds=60, imports=False, opts=None):
+                      max_instance=3, ram=256, timeout_seconds=60, imports=[], opts=None):
         """
         Create Lambda and synthesize it's code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
@@ -92,19 +112,18 @@ class Monad:
                                                 ram=ram, timeout_seconds=timeout_seconds,
                                                 aws_config=self.aws_config, imports=imports, opts=opts)
             case "gcp":
-                return gcp_lambda.create_lambdav2(name, handler, role, environment,
+                return gcp_lambda.create_lambdav2(code_path, name, handler, role, environment,
                                                   http_trigger=http_trigger, topic=mq_topic,
-                                                  source_bucket=self.gcp_lambda_bucket,  # TODO: Change
-                                                  bucket_archive=self.gcp_lambda_archive,
                                                   min_instance=min_instance, max_instance=max_instance,
                                                   ram=ram, timeout_seconds=timeout_seconds,
-                                                  imports=imports, opts=opts)
+                                                  gcp_config=self.gcp_config, imports=imports, opts=opts)
             case "azure":
                 # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=self.azure_config, opts=opts)
                 func = azure_functionapp.create_function_app(name, handler, environment, http_trigger=http_trigger,
                                                              sqs=mq_topic, ram=ram, azure_config=self.azure_config,
                                                              opts=opts)
                 return func
+
 
     def create_message_queue(self, topic_name, message_retention_seconds="60s", environment={}, fifo=True, opts=None):
         """
@@ -120,6 +139,8 @@ class Monad:
         """
         match self.cloud_provider:
             case "aws":
+                if self.aws_config.get("vpc") is not None and self.aws_config.get("vpc_endpoint") is None:
+                    self.create_vpc_endpoint("sqs", "sqs")
                 return aws_sqs.create_sqs(topic_name, fifo=fifo, opts=opts)
             case "gcp":
                 return gcp_pubsub.create_pubsub(topic_name, message_retention_seconds=message_retention_seconds,
@@ -127,6 +148,7 @@ class Monad:
                                                 opts=opts)
             case "azure":
                 pass
+
 
     def get_instance_class_sql(self, size):
         """
@@ -144,6 +166,7 @@ class Monad:
                     return "db-f1-micro"
             case "azure":
                 pass
+
 
     def create_sql_database(self, name, engine, engine_version, storage, username, password, instance_class, environment={}, opts=None):
         """
@@ -166,6 +189,8 @@ class Monad:
 
         match self.cloud_provider:
             case "aws":
+                if self.aws_config.get("vpc") is None:
+                    self.create_vpc("for-database")
                 return aws_sql.create_sql_database(name, engine, engine_version, storage, username,
                                                    password, instance_class, environment, aws_config=self.aws_config, opts=opts)
             case "gcp":
@@ -174,12 +199,14 @@ class Monad:
             case "azure":
                 pass
 
+
     def create_sql_command(self, name, handler, template, environment={}, debug=False, opts=None):
         synthesize(handler, template=template)
         python_script_name = handler.replace(".", "_")
         command = bash_command(name, f"python3 {python_script_name}", f"./code/output/{self.cloud_provider}", debug,
                                opts=opts)
         return command
+
 
     def iam_role_json(self, name):  # TODO: Use policyname as filemame
         """
@@ -195,6 +222,7 @@ class Monad:
                 return "roles/cloudfunctions.invoker"
             case "azure":
                 pass
+
 
     def create_iam_role(self, name, roletype, opts=None):
         """
@@ -214,6 +242,7 @@ class Monad:
                 return rolefile  # gcp_iam.create_iam_role(name, rolefile)
             case "azure":
                 pass
+
 
     def create_role_policy_attachment(self, rolename, roletype, name, policyname, policytype, opts=None):
         """
@@ -237,6 +266,7 @@ class Monad:
             case "azure":
                 pass
 
+
     def create_iam(self, rolename, rolefile, name=None, policyname=None, policyfile=None, opts=None):
         """
         Create IAM roles, policies and attachments.
@@ -259,3 +289,4 @@ class Monad:
                 return self.create_iam_role(name, rolefile, opts=opts)
             case "azure":
                 pass
+

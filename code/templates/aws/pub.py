@@ -16,3 +16,4 @@ def publish_message(message):
         'statusCode': 200,
         'body': output
     }
+

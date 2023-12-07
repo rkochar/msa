@@ -11,15 +11,19 @@ config = Config()
 cloud_provider = config.get("cloud_provider")
 
 
-def synthesize(code_path, handler, template, imports=False):
+def synthesize(code_path, handler, template, imports=[]):
     name, function = handler.split(".")
 
     stub = "http" if template.startswith("http") else "mq"
-    new_file_path = f"./code/output/{cloud_provider}/{code_path}/{name}.py"
+    new_file_path, req_file_path = f"./code/output/{cloud_provider}/{code_path}/{name}.py", f'./code/output/{cloud_provider}/{code_path}/requirements.txt'
     makedirs(path.dirname(new_file_path), exist_ok=True)
     copyfile(f"./code/templates/{cloud_provider}/{stub}.py", new_file_path)
-    if imports:
-        copyfile(f"./code/common/{code_path}/requirements.txt", f"./code/output/{cloud_provider}/{code_path}/requirements.txt")
+
+    if imports is not []:
+        makedirs(path.dirname(req_file_path), exist_ok=True)
+        with open(req_file_path, mode='wt', encoding='utf-8') as reqfile:
+            reqfile.writelines(list(map(lambda x: x + "\n", imports)))
+
     function_parameters = "headers, query_parameters" if template.startswith("http") else "message"
     new_string = f"body = {function}({function_parameters})"
 
@@ -27,7 +31,8 @@ def synthesize(code_path, handler, template, imports=False):
         append_file(new_file_path, f"./code/templates/{cloud_provider}/sql.py")
     if template.endswith("_pub"):
         append_file(new_file_path, f"./code/templates/{cloud_provider}/pub.py")
-        new_string = f"body = publish_message({function}({function_parameters}))"
+        new_string = f"body = {function}({function_parameters})" + "\n    "
+        new_string += "if not body.startswith('Errors found: '):"+ "\n        " + "body = publish_message(body)"
 
     replace(new_file_path, 'body = ""', new_string)
     append_file(new_file_path, f"./code/common/{code_path}/{name}.py")
@@ -57,19 +62,3 @@ def append_file(new_file_path, old_file_path):
     new_file.close()
     old_file.close()
 
-
-# def make_bucket_object(new_file_path, imports, aws_config, gcp_config):
-#     if cloud_provider == "aws":
-#         bucket = aws_config[0]
-#         import_layer = create_layers(imports, aws_config)
-#         zip_file = zip(new_file_path)
-#         create_bucket_object(bucket, name, zip_file)
-#         return bucket_object, import_layer
-#     # elif cloud_provider == "gcp":
-#     #     from gcp.storage import create_bucket
-#     #     bucket = create_bucket(f"{cloud_provider}-code-bucket")
-#     #     bucket_object = bucket.new_object(f"{new_file_path.split('/')[-1]}")
-#     #     bucket_object.upload_file(new_file_path)
-#     #     return bucket_object
-#     else:
-#         raise Exception("Invalid cloud provider")

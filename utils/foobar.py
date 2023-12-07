@@ -10,7 +10,7 @@ def apigw_foobar():
                                          "lambda-role-attachment", "lambda-policy", "lambda-basic-policy")
 
     lambda_foo = m.create_lambda("foobar/foo", 'foobar-foo', "foo.foo", template="http", role=apigw_lambda_iam_role)
-    lambda_bar = m.create_lambda("foobar/bar", 'foobar-bar', "bar.bar", template="http", role=apigw_lambda_iam_role, imports=False)
+    lambda_bar = m.create_lambda("foobar/bar", 'foobar-bar', "bar.bar", template="http", role=apigw_lambda_iam_role, imports=["numpy", "pydantic"])
 
     routes = [
         ("/foo", "GET", lambda_foo, "foobar-foo", "lambda for foo"),
