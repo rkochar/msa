@@ -13,7 +13,6 @@ def create_lambdav2(code_path, name, handler, role, environment, http_trigger, t
                     ram="256M", timeout_seconds=60, runtime="python310", imports=None, gcp_config=None, opts=None):
     bucket = gcp_config["code_bucket"]
     bucket_object = create_bucket_object(f"{name}-object", bucket, f"./code/output/gcp/{code_path}/")
-    # TODO: synthesize imports
     function = Function(name,
                         name=name,
                         location=region,
@@ -41,7 +40,7 @@ def create_lambdav2(code_path, name, handler, role, environment, http_trigger, t
                             all_traffic_on_latest_revision=True,
                         ),
                         event_trigger=event_trigger_config(http_trigger, topic),
-                        opts=opts  # TODO: Put code archive in depends_on
+                        opts=opts
                         )
     invoker = FunctionIamMember(f"{name}-invoker",
                                 project=function.project,

@@ -19,23 +19,29 @@ def synthesize(code_path, handler, template, imports=[]):
     makedirs(path.dirname(new_file_path), exist_ok=True)
     copyfile(f"./code/templates/{cloud_provider}/{stub}.py", new_file_path)
 
-    if imports is not []:
-        makedirs(path.dirname(req_file_path), exist_ok=True)
-        with open(req_file_path, mode='wt', encoding='utf-8') as reqfile:
-            reqfile.writelines(list(map(lambda x: x + "\n", imports)))
-
     function_parameters = "headers, query_parameters" if template.startswith("http") else "message"
     new_string = f"body = {function}({function_parameters})"
 
     if "sql" in template:
         append_file(new_file_path, f"./code/templates/{cloud_provider}/sql.py")
+        if cloud_provider == "gcp":
+            imports.append("SQLAlchemy")
+            imports.append("cloud-sql-python-connector")
+
     if template.endswith("_pub"):
         append_file(new_file_path, f"./code/templates/{cloud_provider}/pub.py")
         new_string = f"body = {function}({function_parameters})" + "\n    "
         new_string += "if not body.startswith('Errors found: '):"+ "\n        " + "body = publish_message(body)"
+        if cloud_provider == "gcp":
+            imports.append("google-cloud-pubsub")
 
     replace(new_file_path, 'body = ""', new_string)
     append_file(new_file_path, f"./code/common/{code_path}/{name}.py")
+
+    if len(imports) > 0:
+        makedirs(path.dirname(req_file_path), exist_ok=True)
+        with open(req_file_path, mode='wt', encoding='utf-8') as reqfile:
+            reqfile.writelines(list(map(lambda x: x + "\n", imports)))
 
 
 def replace(file_path, pattern, subst):

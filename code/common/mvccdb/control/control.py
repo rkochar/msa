@@ -1,7 +1,6 @@
 import ast
 
 
-# TODO: Write worker tables
 def confirm_transaction(message):
     message = ast.literal_eval(message)
     sender = int(message["sender"])

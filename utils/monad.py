@@ -14,7 +14,6 @@ from aws import sql as aws_sql
 from aws import vpc as aws_vpc
 
 from gcp import apigw as gcp_apigw
-from gcp import iam as gcp_iam
 from gcp import cloudfunction as gcp_lambda
 from gcp import pubsub as gcp_pubsub
 from gcp import cloudsql as gcp_sql
@@ -29,7 +28,7 @@ class Monad:
         """
         Setup cloud environments.
         AWS requires VPC for RDS and Endpoint for SQS if Lambda is in VPC. Returns s3 code bucket, vpc, security_group, subnet, subnet_group, vpc_endpoint
-        GCP requires a Provider. In addition, code of Lambda is added to a Storage bucket. # TODO: Make code optional.
+        GCP requires a Provider and a storage bucket for code of cloudfunction is made.
         Azure requires a Resource Group, Storage Account, Storage Container and Service Plan.
         """
         config = Config()
@@ -231,7 +230,7 @@ class Monad:
         :param name: of role
         :param roletype: type of IAM role
         :param opts: of Pulumi
-        :return: AWS creates IAM role object. GCP returns a string. TODO: fix it. and cleanup. 
+        :return: AWS creates IAM role object. GCP returns a string.
         """
         rolefile = self.iam_role_json(roletype)
 
@@ -239,7 +238,7 @@ class Monad:
             case "aws":
                 return aws_iam.create_iam_role(name, rolefile, opts=opts)
             case "gcp":
-                return rolefile  # gcp_iam.create_iam_role(name, rolefile)
+                return rolefile
             case "azure":
                 pass
 

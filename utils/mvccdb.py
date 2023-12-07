@@ -27,11 +27,9 @@ def create_mvccdb():
                                      environment=worker_environment | sqldb_lambda_environment, imports=["pymysql"],
                                      opts=ResourceOptions(depends_on=[transaction_mq, sqldb, worker_lambda]))
 
-    # TODO: remove SNS
-
     routes = [
         ("/init", "GET", sql_init_lambda, "sqldb-init", "Setup database or MVCC-DB"),
         ("/send", "GET", worker_lambda, "worker", "Make a transaction"),
         ("/status", "GET", sql_get_lambda, "sqldb-get", "Get the current state of an account")
     ]
-    m.create_apigw('apigw', routes, opts=ResourceOptions(depends_on=[sql_init_lambda, sql_get_lambda, worker_lambda]))
+    m.create_apigw('mvccdb', routes, opts=ResourceOptions(depends_on=[sql_init_lambda, sql_get_lambda, worker_lambda]))

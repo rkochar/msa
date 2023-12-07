@@ -7,3 +7,4 @@ Pulumi.dev.yaml
 
 *.zip
 code/output/
+apiconfig.yaml
