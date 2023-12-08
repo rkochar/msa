@@ -1,33 +1,35 @@
-from utils.monad import Monad
 from pulumi import ResourceOptions
+from utils.monad import Monad
 
 
 def create_mvccdb():
     m = Monad()
 
-    # SQL database to confirm transactions
-    sqldb, sqldb_lambda_environment = m.create_sql_database("foobar", "mysql", "8.0.34", 10, "foouser", "foopass123",
+    sqldb, sqldb_lambda_environment = m.create_sql_database("sqldb", "mysql", "8.0.34", 10, "foouser", "foopass123",
                                                             "small")
 
-    apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-role")
-    sql_init_lambda = m.create_lambda('sqldb-init', "mvcc_sqldb_init.sqldb_init", template="sql",
-                                      environment=sqldb_lambda_environment, role=apigw_lambda_iam_role)
-    sql_get_lambda = m.create_lambda('sqldb-get', "mvcc_sqldb_get.sqldb_get", template="sql", environment=sqldb_lambda_environment, role=apigw_lambda_iam_role)
+    apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-basic-role",
+                                         "sql-attachment", "sql-policy", "mq-sql-policy")
+    sql_init_lambda = m.create_lambda("mvccdb/init", 'sqldb-init', "mvcc_sqldb_init.sqldb_init", template="http_sql",
+                                      environment=sqldb_lambda_environment, role=apigw_lambda_iam_role, imports=["pymysql"], opts=ResourceOptions(depends_on=[sqldb]))
+    sql_get_lambda = m.create_lambda("mvccdb/get", 'sqldb-get', "mvcc_sqldb_get.sqldb_get", template="http_sql",
+                                     environment=sqldb_lambda_environment, role=apigw_lambda_iam_role, imports=["pymysql", "pydantic"], opts=ResourceOptions(depends_on=[sqldb]))
 
     # Worker
-    # sqs_transaction, worker_environment = m.create_message_queue(topic_name='transaction')
-    # worker_lambda = m.create_lambda("worker", "mvcc_worker.worker", template="sql", environment=worker_environment, role=apigw_lambda_iam_role)
+    transaction_mq, worker_environment = m.create_message_queue(topic_name='transaction')
+    mq_sql_lambda_iam_role = m.create_iam("apigw-lambda-iam-role", "lambda-basic-role",
+                                          "mq-sql-attachment", "mq-sql-policy", "mq-sql-policy")
+    worker_lambda = m.create_lambda("mvccdb/worker", 'worker', "worker.check_transaction", template="http_sql_pub",
+                                    environment=worker_environment | sqldb_lambda_environment,
+                                    role=mq_sql_lambda_iam_role, imports=["pymysql", "pydantic"], opts=ResourceOptions(depends_on=[sqldb, transaction_mq]))
+    control_lambda = m.create_lambda("mvccdb/control", 'control', "control.confirm_transaction", template="mq_sql",
+                                     role=mq_sql_lambda_iam_role, mq_topic=transaction_mq,
+                                     environment=worker_environment | sqldb_lambda_environment, imports=["pymysql"],
+                                     opts=ResourceOptions(depends_on=[transaction_mq, sqldb, worker_lambda]))
 
-    # lambda_role = m.create_role_policy_attachment("lambda-role-attachment", "sns-policy", "policy/aws/lambda-snssqs.json", "apigw-lambda-iam-role", "policy/aws/lambda-apigw.json")
-    #
-    # environment = {"SQS_URL": sqs_transaction.url}
-    # apigw_lambda_consumer = m.create_lambda('lambda-apigw-consumer', "consumer.consumer", lambda_role, environment, http_trigger=False, topic=sqs_transaction.topic, opts=ResourceOptions(depends_on=[sqs]))
-    #
-    # apigw_lambda_database = m.create_lambda('lambda-apigw-database', "consumer.consumer", lambda_role, environment, opts=ResourceOptions(depends_on=[sql]))
-    #
     routes = [
         ("/init", "GET", sql_init_lambda, "sqldb-init", "Setup database or MVCC-DB"),
-        ("/send", "GET", "", "worker", "Make a transaction"),
+        ("/send", "GET", worker_lambda, "worker", "Make a transaction"),
         ("/status", "GET", sql_get_lambda, "sqldb-get", "Get the current state of an account")
     ]
-    m.create_apigw('apigw', routes)
+    m.create_apigw('mvccdb', routes, opts=ResourceOptions(depends_on=[sql_init_lambda, sql_get_lambda, worker_lambda]))

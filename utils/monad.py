@@ -1,22 +1,23 @@
 from pulumi import Config
 
-from utils.helpers import merge_opts, command_template
+from utils.aws import setup_aws
+from utils.azure import setup_azure
+from utils.gcp import setup_gcp
+from utils.helpers import merge_opts, bash_command, flatten
 from utils.synthesizer import synthesize
 
 from aws import apigw as aws_apigw
 from aws import lambdafunction as aws_lambda
 from aws import iam as aws_iam
-from aws import snssqs as aws_snssqs
+from aws import sqs as aws_sqs
 from aws import sql as aws_sql
+from aws import vpc as aws_vpc
 
-from utils.gcp import setup_gcp
 from gcp import apigw as gcp_apigw
-from gcp import iam as gcp_iam
 from gcp import cloudfunction as gcp_lambda
 from gcp import pubsub as gcp_pubsub
 from gcp import cloudsql as gcp_sql
 
-from utils.azure import setup_azure
 from azure import functionapp as azure_functionapp
 from azure import storageblob as azure_storageblob
 from azure import apimanagement as azure_apigw
@@ -26,43 +27,66 @@ class Monad:
     def __init__(self):
         """
         Setup cloud environments.
-        AWS does not require setup.
-        GCP requires a Provider. In addition, code of Lambda is added to a Storage bucket. # TODO: Make code optional.
+        AWS requires VPC for RDS and Endpoint for SQS if Lambda is in VPC. Returns s3 code bucket, vpc, security_group, subnet, subnet_group, vpc_endpoint
+        GCP requires a Provider and a storage bucket for code of cloudfunction is made.
         Azure requires a Resource Group, Storage Account, Storage Container and Service Plan.
         """
         config = Config()
         self.cloud_provider = config.require("cloud_provider")
 
-        if self.cloud_provider == "gcp":
-            self.google_provider, self.gcp_lambda_bucket, self.gcp_lambda_archive = setup_gcp()
-        elif self.cloud_provider == "aws":
-            pass
-        elif self.cloud_provider == "azure":
-            self.azure_config = setup_azure()  # resource_group, account, storage_container, service_plan
+        match self.cloud_provider:
+            case "aws":
+                self.aws_config = setup_aws()
+            case "gcp":
+                self.gcp_config = setup_gcp()
+            case "azure":
+                self.azure_config = setup_azure()
+
+
+    def create_vpc(self, name):
+        match self.cloud_provider:
+            case "aws":
+                vpc, subnet_a, subnet_b, subnet_group = aws_vpc.create_vpc_and_subnet(name)
+                self.aws_config["vpc"] = vpc
+                self.aws_config["subnet_a"] = subnet_a
+                self.aws_config["subnet_b"] = subnet_b
+                self.aws_config["subnet_group"] = subnet_group
+
+
+    def create_vpc_endpoint(self, name, service):
+        match self.cloud_provider:
+            case "aws":
+                vpc_endpoint = aws_vpc.create_vpc_endpoint(name, service, self.aws_config)
+                self.aws_config["vpc_endpoint"] = vpc_endpoint
+
 
     def create_apigw(self, name, routes, opts=None):
         """
         Create APIGW.
-        AWS: API Gateway, GCP: API TODO, Azure: API Management
+        AWS: API Gateway, GCP: APIs, Azure: API Management
 
         :param name: of APIGW.
         :param routes: see README.md for description of Route. This is a tuple that matches Lambda with path that will trigger it.
         :param opts: of Pulumi
         :return: APIGW object
         """
-        if self.cloud_provider == "aws":
-            return aws_apigw.create_apigw(name, routes, opts=opts)
-        elif self.cloud_provider == "gcp":
-            return gcp_apigw.create_apigw(name, routes, opts=merge_opts(self.google_provider, opts))
-        elif self.cloud_provider == "azure":
-            return azure_apigw.create_apigw(name, routes, azure_config=self.azure_config, opts=opts)
+        match self.cloud_provider:
+            case "aws":
+                return aws_apigw.create_apigw(name, routes, opts=opts)
+            case "gcp":
+                return gcp_apigw.create_apigw(name, routes, opts=merge_opts(self.gcp_config.get("google_provider"), opts))
+            case "azure":
+                return azure_apigw.create_apigw(name, routes, azure_config=self.azure_config, opts=opts)
 
-    def create_lambda(self, name, handler, role=None, environment={}, template="http", mq_topic=None, min_instance=1,
-                      max_instance=3, ram=256, timeout_seconds=60, opts=None):
+
+    def create_lambda(self, code_path, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1,
+                      max_instance=3, ram=256, timeout_seconds=60, imports=[], opts=None):
         """
         Create Lambda and synthesize it's code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
 
+        :param imports:
+        :param code_path:
         :param name: of Lambda
         :param handler: method that will be called when a Lambda is triggered.
         :param role: IAM role of Lambda
@@ -77,27 +101,30 @@ class Monad:
         :return: Lambda object
         """
 
-        synthesize(handler, template=template, environment=environment)
-        http_trigger = True if template == "http" or template == "sql" else False
+        synthesize(code_path, handler, template=template, imports=imports)
+        http_trigger = True if template.startswith("http") or template == "sql" else False
 
-        if self.cloud_provider == "aws":
-            return aws_lambda.create_lambda(name, handler, role, environment,
-                                            http_trigger=http_trigger, sqs=mq_topic,
-                                            ram=ram, timeout_seconds=timeout_seconds,
-                                            opts=opts)
-        elif self.cloud_provider == "gcp":
-            return gcp_lambda.create_lambdav2(name, handler, role, environment,
-                                              http_trigger=http_trigger, topic=mq_topic,
-                                              source_bucket=self.gcp_lambda_bucket,
-                                              bucket_archive=self.gcp_lambda_archive,
-                                              min_instance=min_instance, max_instance=max_instance,
-                                              ram=ram, timeout_seconds=timeout_seconds, opts=opts)
-        elif self.cloud_provider == "azure":
-            #blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=self.azure_config, opts=opts)
-            func = azure_functionapp.create_function_app(name, handler, environment, http_trigger=http_trigger, sqs=mq_topic, ram=ram, azure_config=self.azure_config, opts=opts)
-            return func
+        match self.cloud_provider:
+            case "aws":
+                return aws_lambda.create_lambda(code_path, name, handler, role, environment,
+                                                template, http_trigger=http_trigger, sqs=mq_topic, sqldb=sqldb,
+                                                ram=ram, timeout_seconds=timeout_seconds,
+                                                aws_config=self.aws_config, imports=imports, opts=opts)
+            case "gcp":
+                return gcp_lambda.create_lambdav2(code_path, name, handler, role, environment,
+                                                  http_trigger=http_trigger, topic=mq_topic,
+                                                  min_instance=min_instance, max_instance=max_instance,
+                                                  ram=ram, timeout_seconds=timeout_seconds,
+                                                  gcp_config=self.gcp_config, imports=imports, opts=opts)
+            case "azure":
+                # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=self.azure_config, opts=opts)
+                func = azure_functionapp.create_function_app(name, handler, environment, http_trigger=http_trigger,
+                                                             sqs=mq_topic, ram=ram, azure_config=self.azure_config,
+                                                             opts=opts)
+                return func
 
-    def create_message_queue(self, topic_name, message_retention_seconds="60s", environment={}, opts=None):
+
+    def create_message_queue(self, topic_name, message_retention_seconds="60s", environment={}, fifo=True, opts=None):
         """
         Create Message Queue.
         AWS: SQS, GCP: Pub/Sub, Azure: tbd.
@@ -105,16 +132,22 @@ class Monad:
         :param topic_name: name of Message Queue
         :param message_retention_seconds: timeout of message
         :param environment: of Lambda that will be triggered by MQ (needed for AWS).
+        :param fifo: for AWS to force max 1 instance of Lambda (https://stackoverflow.com/a/71208857/12555857)
         :param opts: of Pulumi
         :return: Message Queue object.
         """
-        if self.cloud_provider == "aws":
-            return aws_snssqs.create_sqs(topic_name, opts=opts)
-        elif self.cloud_provider == "gcp":
-            return gcp_pubsub.create_pubsub(topic_name, message_retention_seconds=message_retention_seconds,
-                                            opts=opts), environment
-        elif self.cloud_provider == "azure":
-            pass
+        match self.cloud_provider:
+            case "aws":
+                if self.aws_config.get("vpc") is not None and self.aws_config.get("vpc_endpoint") is None:
+                    self.create_vpc_endpoint("sqs", "sqs")
+                return aws_sqs.create_sqs(topic_name, fifo=fifo, opts=opts)
+            case "gcp":
+                return gcp_pubsub.create_pubsub(topic_name, message_retention_seconds=message_retention_seconds,
+                                                environment=environment,
+                                                opts=opts)
+            case "azure":
+                pass
+
 
     def get_instance_class_sql(self, size):
         """
@@ -123,16 +156,18 @@ class Monad:
         :param size: "small"
         :return: Correct name according to Cloud Provider.
         """
-        if self.cloud_provider == "aws":
-            if size == "small":
-                return "db.t3.micro"
-        elif self.cloud_provider == "gcp":
-            if size == "small":
-                return "db-f1-micro"
-        elif self.cloud_provider == "azure":
-            pass
+        match self.cloud_provider:
+            case "aws":
+                if size == "small":
+                    return "db.t3.micro"
+            case "gcp":
+                if size == "small":
+                    return "db-f1-micro"
+            case "azure":
+                pass
 
-    def create_sql_database(self, name, engine, engine_version, storage, username, password, instance_class, environment = {}, opts=None):
+
+    def create_sql_database(self, name, engine, engine_version, storage, username, password, instance_class, environment={}, opts=None):
         """
         Create SQL database.
         AWS: RDS, GCP: CloudSQL, Azure: tbd
@@ -149,42 +184,44 @@ class Monad:
         :return: SQL database object
         """
         instance_class = self.get_instance_class_sql(instance_class)
-        environment["USERNAME"], environment["PASSWORD"] = username, password
-        if self.cloud_provider == "aws":
-            return aws_sql.create_sql_database(name, engine, engine_version, storage, username,
-                                               password, instance_class, environment, opts=opts)
-        elif self.cloud_provider == "gcp":
-            return gcp_sql.create_sql_database(name, engine, engine_version, username,
-                                               password, instance_class, environment, opts=opts)
-        elif self.cloud_provider == "azure":
-            pass
+        environment["SQLDB_USERNAME"], environment["SQLDB_PASSWORD"] = username, password
+
+        match self.cloud_provider:
+            case "aws":
+                if self.aws_config.get("vpc") is None:
+                    self.create_vpc("for-database")
+                return aws_sql.create_sql_database(name, engine, engine_version, storage, username,
+                                                   password, instance_class, environment, aws_config=self.aws_config, opts=opts)
+            case "gcp":
+                return gcp_sql.create_sql_database(name, engine, engine_version, username,
+                                                   password, instance_class, environment, opts=opts)
+            case "azure":
+                pass
+
 
     def create_sql_command(self, name, handler, template, environment={}, debug=False, opts=None):
-        synthesize(handler, template=template, environment=environment)
+        synthesize(handler, template=template)
         python_script_name = handler.replace(".", "_")
-        command = command_template(name, f"python3 {python_script_name}", f"./code/output/{self.cloud_provider}", debug, opts)
+        command = bash_command(name, f"python3 {python_script_name}", f"./code/output/{self.cloud_provider}", debug,
+                               opts=opts)
         return command
 
 
-    def iam_role_json(self, name):
+    def iam_role_json(self, name):  # TODO: Use policyname as filemame
         """
         Get IAM role json file path from name of file according to Cloud Provider.
 
         :param name: of IAM role
         :return: IAM role JSON file path
         """
-        if self.cloud_provider == "aws":
-            if name == "lambda-role":
-                return "policy/aws/lambda-apigw.json"
-            elif name == "mq-role":
-                return "policy/aws/lambda-mq.json"
-        elif self.cloud_provider == "gcp":
-            if name == "lambda-role":
+        match self.cloud_provider:
+            case "aws":
+                return f"./policy/aws/{name}.json"
+            case "gcp":
                 return "roles/cloudfunctions.invoker"
-            elif name == "mq-role":
-                return "roles/cloudfunctions.invoker"
-        elif self.cloud_provider == "azure":
-            pass
+            case "azure":
+                pass
+
 
     def create_iam_role(self, name, roletype, opts=None):
         """
@@ -193,15 +230,18 @@ class Monad:
         :param name: of role
         :param roletype: type of IAM role
         :param opts: of Pulumi
-        :return: AWS creates IAM role object. GCP returns a string. TODO: fix it. and cleanup. 
+        :return: AWS creates IAM role object. GCP returns a string.
         """
         rolefile = self.iam_role_json(roletype)
-        if self.cloud_provider == "aws":
-            return aws_iam.create_iam_role(name, rolefile, opts=opts)
-        elif self.cloud_provider == "gcp":
-            return rolefile  # gcp_iam.create_iam_role(name, rolefile)
-        elif self.cloud_provider == "azure":
-            pass
+
+        match self.cloud_provider:
+            case "aws":
+                return aws_iam.create_iam_role(name, rolefile, opts=opts)
+            case "gcp":
+                return rolefile
+            case "azure":
+                pass
+
 
     def create_role_policy_attachment(self, rolename, roletype, name, policyname, policytype, opts=None):
         """
@@ -216,12 +256,15 @@ class Monad:
         :return: Role Policy Attachment object
         """
         rolefile, policyfile = self.iam_role_json(roletype), self.iam_role_json(policytype)
-        if self.cloud_provider == "aws":
-            return aws_iam.create_role_policy_attachment(name, policyname, policyfile, rolename, rolefile, opts=opts)
-        elif self.cloud_provider == "gcp":
-            pass
-        elif self.cloud_provider == "azure":
-            pass
+
+        match self.cloud_provider:
+            case "aws":
+                return aws_iam.create_role_policy_attachment(name, policyname, policyfile, rolename, rolefile, opts=opts)
+            case "gcp":
+                pass
+            case "azure":
+                pass
+
 
     def create_iam(self, rolename, rolefile, name=None, policyname=None, policyfile=None, opts=None):
         """
@@ -235,12 +278,14 @@ class Monad:
         :param opts: of Pulumi
         :return: AWS returns an IAM object. GCP returns a string.
         """
-        if self.cloud_provider == "aws":
-            if name is None:
-                return self.create_iam_role(rolename, rolefile, opts=opts)
-            else:
-                return self.create_role_policy_attachment(rolename, rolefile, name, policyname, policyfile, opts=opts)
-        elif self.cloud_provider == "gcp":
-            return self.create_iam_role(name, rolefile, opts=opts)
-        elif self.cloud_provider == "azure":
-            pass
+        match self.cloud_provider:
+            case "aws":
+                if name is None:
+                    return self.create_iam_role(rolename, rolefile, opts=opts)
+                else:
+                    return self.create_role_policy_attachment(rolename, rolefile, name, policyname, policyfile, opts=opts)
+            case "gcp":
+                return self.create_iam_role(name, rolefile, opts=opts)
+            case "azure":
+                pass
+

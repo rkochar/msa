@@ -9,7 +9,8 @@ def create_bucket(name):
     return Bucket(name, location=region)
 
 
-def add_object(name, bucket, path):
+def create_bucket_object(name, bucket, path):
     return BucketObject(name,
                         bucket=bucket.name,
                         source=FileArchive(path))
+

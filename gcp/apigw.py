@@ -13,16 +13,16 @@ region = config.get("region")
 
 def create_apigw(name, routes, opts=None):
     apigw = gcp.apigateway.Api(name, api_id=f"apigw-id-{name}", project=project, opts=opts)
-    api_config = create_api_config(apigw, routes=routes, opts=merge_opts(opts, ResourceOptions(depends_on=[apigw])))
+    api_config = create_api_config(name, apigw, routes=routes, opts=merge_opts(opts, ResourceOptions(depends_on=[apigw])))
     gateway = create_api_gateway(name, api_config, opts=merge_opts(opts, ResourceOptions(depends_on=[api_config])))
 
     export(f"apigw-url-{name}", Output.concat("https://", gateway.default_hostname))
     return apigw
 
 
-def create_api_config(apigw, routes, opts=None):
+def create_api_config(name, apigw, routes, opts=None):
     parse_routes(routes)
-    return gcp.apigateway.ApiConfig("apiCfgApiConfig",
+    return gcp.apigateway.ApiConfig(f"{name}-config",
                                     api=apigw.api_id,
                                     api_config_id="my-config",
                                     project=project,
@@ -36,7 +36,7 @@ def create_api_config(apigw, routes, opts=None):
 
 
 def create_api_gateway(name, api_config, opts=None):
-    return gcp.apigateway.Gateway("apiGwGateway",
+    return gcp.apigateway.Gateway(f"{name}-gateway",
                                   project=project,
                                   region=region,
                                   api_config=api_config.id,
@@ -60,7 +60,6 @@ def parse_routes(routes):
                                                           },
                                                           "responses": {"200": {"description": "TODO",
                                                                                 "schema": {"type": "string"}}}}
-        # print(f"Api config: {apiconfig}")
     with open("./gcp/apiconfig.yaml", "w") as f:
         yaml.dump(apiconfig, f)
     f.close()

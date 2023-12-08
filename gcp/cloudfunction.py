@@ -1,31 +1,32 @@
-import pulumi_gcp.cloudfunctions as v1
 from pulumi_gcp.cloudfunctionsv2 import Function, FunctionIamMember, FunctionBuildConfigArgs, \
     FunctionBuildConfigSourceArgs, FunctionBuildConfigSourceStorageSourceArgs, FunctionServiceConfigArgs, \
-    FunctionEventTriggerArgs, FunctionEventTriggerEventFilterArgs
-from pulumi import Config, export, Output
+    FunctionEventTriggerArgs
+from pulumi import Config, Output
+from gcp.cloudstorage import create_bucket_object
 
 config = Config("gcp")
 region = config.get("region")
 project = config.get("project")
 
 
-def create_lambdav2(name, handler, role, environment, http_trigger, topic, source_bucket, bucket_archive,
-                    min_instance=1, max_instance=3,
-                    ram="256M", timeout_seconds=60, runtime="python310", opts=None):
+def create_lambdav2(code_path, name, handler, role, environment, http_trigger, topic, min_instance=1, max_instance=3,
+                    ram="256M", timeout_seconds=60, runtime="python310", imports=None, gcp_config=None, opts=None):
+    bucket = gcp_config["code_bucket"]
+    bucket_object = create_bucket_object(f"{name}-object", bucket, f"./code/output/gcp/{code_path}/")
     function = Function(name,
                         name=name,
                         location=region,
-                        project="master-thesis-faas-monad",  # project,
+                        project=project,
                         build_config=FunctionBuildConfigArgs(
                             runtime=runtime,
                             entry_point="template",
                             environment_variables={
-                                "GOOGLE_FUNCTION_SOURCE": handler.replace(".", "-") + get_file_extension(runtime)
+                                "GOOGLE_FUNCTION_SOURCE": handler.split(".")[0] + get_file_extension(runtime)
                             },
                             source=FunctionBuildConfigSourceArgs(
                                 storage_source=FunctionBuildConfigSourceStorageSourceArgs(
-                                    bucket=source_bucket.name,
-                                    object=bucket_archive.name,
+                                    bucket=bucket.name,
+                                    object=bucket_object.name,
                                 ),
                             ),
                         ),
@@ -48,7 +49,6 @@ def create_lambdav2(name, handler, role, environment, http_trigger, topic, sourc
                                 role=role,
                                 member="allUsers"
                                 )
-    export(f'lambda-{name}-url', function.url)
     return function
 
 
@@ -60,41 +60,11 @@ def event_trigger_config(http_trigger, topic):
             trigger_region=region,
             event_type="google.cloud.pubsub.topic.v1.messagePublished",
             pubsub_topic=Output.concat("projects/", project, "/topics/", topic.name),
-            # topic, # topic: "projects/master-thesis-faas-monad/topics/test-topic"
             retry_policy="RETRY_POLICY_DO_NOT_RETRY",  # TODO: offer as parameter
-            # event_filters=[FunctionEventTriggerEventFilterArgs(
-            #    attribute="bucket",
-            #    value=trigger_bucket.name,
-            # )],
         )
-
-
-def create_lambda(name, handler, role, environment, source_bucket, bucket_archive, runtime="python310", opts=None):
-    function = v1.Function(name,
-                           name=name,
-                           runtime=runtime,
-                           region=region,
-                           environment_variables=environment,
-                           build_environment_variables={
-                               "GOOGLE_FUNCTION_SOURCE": str(handler[0]) + get_file_extension(runtime)
-                           },
-                           source_archive_bucket=source_bucket.name,
-                           source_archive_object=bucket_archive.name,
-                           entry_point=handler[1],
-                           trigger_http=True,
-                           opts=opts
-                           )
-    invoker = v1.FunctionIamMember(f"{name}-invoker",
-                                   project=function.project,
-                                   region=function.region,
-                                   cloud_function=function.name,
-                                   role=role,
-                                   member="allUsers"
-                                   )
-    export(f'lambda-{name}-url', function.https_trigger_url)
-    return function
 
 
 def get_file_extension(runtime: str):
     if runtime.startswith("python"):
         return ".py"
+

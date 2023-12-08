@@ -1,45 +1,65 @@
 from shutil import copyfile, copytree, move, rmtree
-from os import path
+from os import path, makedirs
 
 from pulumi import Config
 
-from utils.helpers import replace
+from tempfile import mkstemp
+from shutil import move, copymode
+from os import fdopen, remove
 
 config = Config()
 cloud_provider = config.get("cloud_provider")
 
 
-def synthesize(handler, template, environment):
+def synthesize(code_path, handler, template, imports=[]):
     name, function = handler.split(".")
-    match template:
-        case "http":
-            if cloud_provider == "aws":
-                synthesize_aws_http(name, function, template=template)
-            elif cloud_provider == "gcp":
-                synthesize_gcp_http(name, function, template=template)
-            elif cloud_provider == "azure":
-                synthesize_azure_http(name, function, template=template)
-        case "mq":
-            if cloud_provider == "aws":
-                synthesize_aws_mq(name, function, template=template, environment=environment)
-            elif cloud_provider == "gcp":
-                synthesize_gcp_mq(name, function, template=template)
-            elif cloud_provider == "azure":
-                pass
-        case "sql":
-            if cloud_provider == "aws":
-                pass
-            elif cloud_provider == "gcp":
-                synthesize_gcp_sql(name, function, template=template)
+
+    stub = "http" if template.startswith("http") else "mq"
+    new_file_path, req_file_path = f"./code/output/{cloud_provider}/{code_path}/{name}.py", f'./code/output/{cloud_provider}/{code_path}/requirements.txt'
+    makedirs(path.dirname(new_file_path), exist_ok=True)
+    copyfile(f"./code/templates/{cloud_provider}/{stub}.py", new_file_path)
+
+    function_parameters = "headers, query_parameters" if template.startswith("http") else "message"
+    new_string = f"body = {function}({function_parameters})"
+
+    if "sql" in template:
+        append_file(new_file_path, f"./code/templates/{cloud_provider}/sql.py")
+        if cloud_provider == "gcp":
+            imports.append("SQLAlchemy")
+            imports.append("cloud-sql-python-connector")
+
+    if template.endswith("_pub"):
+        append_file(new_file_path, f"./code/templates/{cloud_provider}/pub.py")
+        new_string = f"body = {function}({function_parameters})" + "\n    "
+        new_string += "if not body.startswith('Errors found: '):"+ "\n        " + "body = publish_message(body)"
+        if cloud_provider == "gcp":
+            imports.append("google-cloud-pubsub")
+
+    replace(new_file_path, 'body = ""', new_string)
+    append_file(new_file_path, f"./code/common/{code_path}/{name}.py")
+
+    if len(imports) > 0:
+        makedirs(path.dirname(req_file_path), exist_ok=True)
+        with open(req_file_path, mode='wt', encoding='utf-8') as reqfile:
+            reqfile.writelines(list(map(lambda x: x + "\n", imports)))
 
 
-def append_user_function(name, function, template, function_parameters):
-    new_file_path = f"./code/output/{cloud_provider}/{name}-{function}.py"
-    old_file_path = f"./code/common/{name}.py"
-    copyfile(f"./templates/{cloud_provider}/{template}.py", new_file_path)
+def replace(file_path, pattern, subst):
+    # Create temp file
+    fh, abs_path = mkstemp()
+    with fdopen(fh, 'w') as new_file:
+        with open(file_path) as old_file:
+            for line in old_file:
+                new_file.write(line.replace(pattern, subst))
+    # Copy the file permissions from the old file to the new file
+    copymode(file_path, abs_path)
+    # Remove original file
+    remove(file_path)
+    # Move new file
+    move(abs_path, file_path)
 
-    replace(new_file_path, 'body = ""', f"body = {function}({function_parameters})")
 
+def append_file(new_file_path, old_file_path):
     new_file = open(new_file_path, "a+")
     old_file = open(old_file_path, "r")
     new_file.write("\n\n")
@@ -48,58 +68,3 @@ def append_user_function(name, function, template, function_parameters):
     new_file.close()
     old_file.close()
 
-    return new_file_path
-
-
-def synthesize_aws_http(name, function, template):
-    return synthesize_http(name, function, template, event="event")
-
-
-def synthesize_gcp_http(name, function, template):
-    return synthesize_http(name, function, template, event="request")
-
-
-def synthesize_azure_http(name, function, template):
-    destination = f"./code/output/azure/{name}-{function}"
-    if path.exists(destination):
-        rmtree(destination)
-    copytree(f"./templates/azure/{template}", destination)
-
-    function_call = "req, headers, query_string_parameters"
-    template = f"{template}/function_app"
-    new_file_path = append_user_function(name, function, template, function_call)
-
-    replace(new_file_path, "<route>", f"{name}-{function}")
-    move(new_file_path, f"{destination}/function_app.py")
-
-
-def synthesize_http(name, function, template, event):
-    function_call = f"{event}, headers, query_string_parameters"
-    append_user_function(name, function, template, function_call)
-
-
-def synthesize_mq(name, function, template):
-    function_call = f"message"  # TODO: cleanup
-    append_user_function(name, function, template, function_call)
-
-
-def synthesize_aws_mq(name, function, template, environment):
-    function_call = "message"
-    new_file_path = append_user_function(name, function, template, function_call)
-
-    queue_name = next(k for k in environment.keys() if k.startswith("SQS_"))
-    replace(new_file_path, "queue_url = os.environ['SQS_']", f"queue_url = os.environ['{queue_name}']")
-
-
-def synthesize_gcp_mq(name, function, template):
-    function_call = "message"
-    append_user_function(name, function, template, function_call)
-
-
-def synthesize_azure_mq(name, function, template):
-    pass
-
-
-def synthesize_gcp_sql(name, function, template):
-    function_call = f"pool, headers, query_string_parameters"
-    append_user_function(name, function, template, function_call)
