@@ -2,9 +2,9 @@
 venv/
 .idea/
 .pulumi/
-Pulumi.dev.yaml
+**/*.dev.yaml
 *.dev.yaml
 
 *.zip
 code/output/
-apiconfig.yaml
+**/apiconfig.yaml

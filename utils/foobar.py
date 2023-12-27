@@ -7,10 +7,11 @@ def apigw_foobar():
     m = Monad()
 
     apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-basic-role",
-                                         "lambda-role-attachment", "lambda-policy", "lambda-basic-policy")
+                                         "lambda-role-attachment", "lambda-iam-policy", "lambda-basic-policy")
 
     lambda_foo = m.create_lambda("foobar/foo", 'foobar-foo', "foo.foo", template="http", role=apigw_lambda_iam_role)
-    lambda_bar = m.create_lambda("foobar/bar", 'foobar-bar', "bar.bar", template="http", role=apigw_lambda_iam_role, imports=["numpy", "pydantic"])
+    lambda_bar = m.create_lambda("foobar/bar", 'foobar-bar', "bar.bar", template="http", role=apigw_lambda_iam_role,
+                                 imports=["numpy", "pydantic"])
 
     routes = [
         ("/foo", "GET", lambda_foo, "foobar-foo", "lambda for foo"),
