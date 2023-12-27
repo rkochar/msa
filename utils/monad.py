@@ -216,7 +216,7 @@ class Monad:
         """
         match self.cloud_provider:
             case "aws":
-                return f"./policy/aws/{name}.json"
+                return f"./iam-policy-files/aws/{name}.json"
             case "gcp":
                 return "roles/cloudfunctions.invoker"
             case "azure":
@@ -250,8 +250,8 @@ class Monad:
         :param rolename: name of IAM role
         :param roletype: type of IAM role
         :param name: of Role Policy Attachment
-        :param policyname: name of policy
-        :param policytype: type of policy
+        :param policyname: name of IAM policy
+        :param policytype: type of IAM policy
         :param opts: of Pulumi
         :return: Role Policy Attachment object
         """
@@ -273,8 +273,8 @@ class Monad:
         :param rolename: name of IAM role
         :param rolefile: type of IAM role
         :param name: of Role Policy Attachment. If None, not created
-        :param policyname: name of policy. If None, not created
-        :param policyfile: type of policy. If None, not created
+        :param policyname: name of IAM Policy. If None, not created
+        :param policyfile: type of IAM Policy. If None, not created
         :param opts: of Pulumi
         :return: AWS returns an IAM object. GCP returns a string.
         """

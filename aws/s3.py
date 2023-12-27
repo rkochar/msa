@@ -1,5 +1,3 @@
-import os
-
 from pulumi_aws.s3 import BucketV2, BucketAclV2, BucketObjectv2
 
 

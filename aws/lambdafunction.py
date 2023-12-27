@@ -4,11 +4,10 @@ from utils.helpers import bash_command
 from aws.s3 import create_bucket_object
 
 config = Config()
-architecture = config.get("architecture") or ("arm64" if imports else "x86_64")
 
 
 def create_lambda(code_path, name, handler, role, environment, template, http_trigger=True, sqs=None, sqldb=None,
-                  ram=256, runtime="python3.10", timeout_seconds=60, aws_config=None, imports=False, opts=None):
+                  ram=256, runtime="python3.10", timeout_seconds=60, aws_config=None, imports=[], opts=None):
     """
     Create Lambda (faas).
 
@@ -30,6 +29,7 @@ def create_lambda(code_path, name, handler, role, environment, template, http_tr
     :param opts: of Pulumi
     :return: Lambda object
     """
+    architecture = config.get("architecture") or ("arm64" if imports else "x86_64")
     code_bucket = aws_config.get("code_bucket")
     dir = code_path.split("/")[0]
     handler = handler.split(".")[0] + ".template"
@@ -42,7 +42,7 @@ def create_lambda(code_path, name, handler, role, environment, template, http_tr
         "subnet_ids": aws_config.get("subnet_group").subnet_ids
     }
 
-    lambda_layer = [create_import_layer(code_path, name, runtime, code_bucket).arn] if imports else None
+    lambda_layer = [create_import_layer(code_path, name, runtime, code_bucket, architecture).arn] if len(imports) > 0 else None
 
     lambda_function = Function(name,
                                runtime=runtime,
@@ -71,7 +71,7 @@ def create_lambda(code_path, name, handler, role, environment, template, http_tr
     return lambda_function
 
 
-def create_import_layer(code_path, name, runtime, code_bucket):
+def create_import_layer(code_path, name, runtime, code_bucket, architecture):
     import_path = f"./code/output/aws/{code_path}"
     zip_file = f"{code_path.replace('/', '-')}-layer.zip"
     wheel_architecture = "aarch64" if architecture == "arm64" else "x86_64"

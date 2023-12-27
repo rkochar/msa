@@ -34,8 +34,8 @@ def create_iam_policy(name, file, opts=None):
     """
     Create IAM policy from json file.
 
-    :param name: of policy
-    :param file: path to file that stores the policy in json
+    :param name: of IAM policy
+    :param file: path to file that stores the IAM policy in json
     :param opts: of Pulumi
     :return: IAM policy object
     """
@@ -48,8 +48,8 @@ def create_role_policy_attachment(name, policyname, policyfile, rolename, rolefi
     Create IAM Role Policy Attachment.
 
     :param name: of Role Policy Attachment
-    :param policyname: name of policy
-    :param policyfile: path to file that stores the policy in json
+    :param policyname: name of IAM policy
+    :param policyfile: path to file that stores the IAM policy in json
     :param rolename: name of role
     :param rolefile: path to file that stores the role in json
     :param opts: of Pulumi
