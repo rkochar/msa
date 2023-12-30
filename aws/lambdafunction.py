@@ -23,7 +23,7 @@ def create_lambda(code_path, name, handler, role, environment, template, http_tr
     :param http_trigger: is Lambda triggered by HTTP
     :param sqs: if http_trigger is False, SQS object that will trigger Lambda
     :param ram: available to Lambda
-    :param runtime: Language and Version of code that will run in Lambda
+    :param runtime: Language and Version of serverless_code that will run in Lambda
     :param timeout_seconds: max time a Lambda can run for
     :param aws_config:
     :param opts: of Pulumi
@@ -33,8 +33,8 @@ def create_lambda(code_path, name, handler, role, environment, template, http_tr
     code_bucket = aws_config.get("code_bucket")
     dir = code_path.split("/")[0]
     handler = handler.split(".")[0] + ".template"
-    zip_command = bash_command(name=f"zip-lambda-{name}", command=f"rm -rf {name}.zip && zip -r {name}.zip *", path=f"./code/output/aws/{code_path}/")
-    bucket_object = create_bucket_object(f"{dir}/{name}", code_bucket, f"./code/output/aws/{code_path}/{name}.zip",
+    zip_command = bash_command(name=f"zip-lambda-{name}", command=f"rm -rf {name}.zip && zip -r {name}.zip *", path=f"./serverless_code/output/aws/{code_path}/")
+    bucket_object = create_bucket_object(f"{dir}/{name}", code_bucket, f"./serverless_code/output/aws/{code_path}/{name}.zip",
                                          opts=ResourceOptions(depends_on=[code_bucket, zip_command]))
 
     vpc_config = None if "sql" not in template else {
@@ -72,7 +72,7 @@ def create_lambda(code_path, name, handler, role, environment, template, http_tr
 
 
 def create_import_layer(code_path, name, runtime, code_bucket, architecture):
-    import_path = f"./code/output/aws/{code_path}"
+    import_path = f"./serverless_code/output/aws/{code_path}"
     zip_file = f"{code_path.replace('/', '-')}-layer.zip"
     wheel_architecture = "aarch64" if architecture == "arm64" else "x86_64"
     layer_script = bash_command(name=f"create-layer-{name}",

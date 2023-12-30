@@ -15,28 +15,28 @@ def synthesize(code_path, handler, template, imports=[]):
     name, function = handler.split(".")
 
     stub = "http" if template.startswith("http") else "mq"
-    new_file_path, req_file_path = f"./code/output/{cloud_provider}/{code_path}/{name}.py", f'./code/output/{cloud_provider}/{code_path}/requirements.txt'
+    new_file_path, req_file_path = f"./serverless_code/output/{cloud_provider}/{code_path}/{name}.py", f'./serverless_code/output/{cloud_provider}/{code_path}/requirements.txt'
     makedirs(path.dirname(new_file_path), exist_ok=True)
-    copyfile(f"./code/templates/{cloud_provider}/{stub}.py", new_file_path)
+    copyfile(f"./serverless_code/templates/{cloud_provider}/{stub}.py", new_file_path)
 
     function_parameters = "headers, query_parameters" if template.startswith("http") else "message"
     new_string = f"body = {function}({function_parameters})"
 
     if "sql" in template:
-        append_file(new_file_path, f"./code/templates/{cloud_provider}/sql.py")
+        append_file(new_file_path, f"./serverless_code/templates/{cloud_provider}/sql.py")
         if cloud_provider == "gcp":
             imports.append("SQLAlchemy")
             imports.append("cloud-sql-python-connector")
 
     if template.endswith("_pub"):
-        append_file(new_file_path, f"./code/templates/{cloud_provider}/pub.py")
+        append_file(new_file_path, f"./serverless_code/templates/{cloud_provider}/pub.py")
         new_string = f"body = {function}({function_parameters})" + "\n    "
         new_string += "if not body.startswith('Errors found: '):"+ "\n        " + "body = publish_message(body)"
         if cloud_provider == "gcp":
             imports.append("google-cloud-pubsub")
 
     replace(new_file_path, 'body = ""', new_string)
-    append_file(new_file_path, f"./code/common/{code_path}/{name}.py")
+    append_file(new_file_path, f"./serverless_code/common/{code_path}/{name}.py")
 
     if len(imports) > 0:
         makedirs(path.dirname(req_file_path), exist_ok=True)

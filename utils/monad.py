@@ -27,8 +27,8 @@ class Monad:
     def __init__(self):
         """
         Setup cloud environments.
-        AWS requires VPC for RDS and Endpoint for SQS if Lambda is in VPC. Returns s3 code bucket, vpc, security_group, subnet, subnet_group, vpc_endpoint
-        GCP requires a Provider and a storage bucket for code of cloudfunction is made.
+        AWS requires VPC for RDS and Endpoint for SQS if Lambda is in VPC. Returns s3 serverless_code bucket, vpc, security_group, subnet, subnet_group, vpc_endpoint
+        GCP requires a Provider and a storage bucket for serverless_code of cloudfunction is made.
         Azure requires a Resource Group, Storage Account, Storage Container and Service Plan.
         """
         config = Config()
@@ -82,7 +82,7 @@ class Monad:
     def create_lambda(self, code_path, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1,
                       max_instance=3, ram=256, timeout_seconds=60, imports=[], opts=None):
         """
-        Create Lambda and synthesize it's code.
+        Create Lambda and synthesize it's serverless_code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
 
         :param imports:
@@ -202,7 +202,7 @@ class Monad:
     def create_sql_command(self, name, handler, template, environment={}, debug=False, opts=None):
         synthesize(handler, template=template)
         python_script_name = handler.replace(".", "_")
-        command = bash_command(name, f"python3 {python_script_name}", f"./code/output/{self.cloud_provider}", debug,
+        command = bash_command(name, f"python3 {python_script_name}", f"./serverless_code/output/{self.cloud_provider}", debug,
                                opts=opts)
         return command
 
