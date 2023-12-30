@@ -79,8 +79,7 @@ class Monad:
                 return azure_apigw.create_apigw(name, routes, azure_config=self.azure_config, opts=opts)
 
 
-    def create_lambda(self, code_path, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1,
-                      max_instance=3, ram=256, timeout_seconds=60, imports=[], opts=None):
+    def create_lambda(self, code_path, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], opts=None):
         """
         Create Lambda and synthesize it's serverless_code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App

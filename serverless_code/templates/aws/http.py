@@ -2,9 +2,11 @@ import json
 import boto3
 from os import getenv
 import re
+from time import time
 
 
 def template(event, context):
+    start_time = time()
     query_parameters = event.get("queryStringParameters") or {}
     headers = event.get("headers") or {}
 
@@ -12,5 +14,5 @@ def template(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps(body)
+        "body": json.dumps({"body": body, "execution_time": str(time() - start_time)})
     }

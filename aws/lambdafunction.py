@@ -6,8 +6,7 @@ from aws.s3 import create_bucket_object
 config = Config()
 
 
-def create_lambda(code_path, name, handler, role, environment, template, http_trigger=True, sqs=None, sqldb=None,
-                  ram=256, runtime="python3.10", timeout_seconds=60, aws_config=None, imports=[], opts=None):
+def create_lambda(code_path, name, handler, role, environment, template, http_trigger=True, sqs=None, sqldb=None, ram=256, runtime="python3.10", timeout_seconds=60, aws_config=None, imports=[], time=True, opts=None):
     """
     Create Lambda (faas).
 
