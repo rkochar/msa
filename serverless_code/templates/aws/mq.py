@@ -20,5 +20,5 @@ def template(event, context):
         QueueUrl=queue_url,
         ReceiptHandle=receipt_handle,
     )
-    print('Received and deleted message: %s' % record)
-    print(f"body: {body}")
+    #print('Received and deleted message: %s' % record)
+    #print(f"body: {body}")

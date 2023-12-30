@@ -18,7 +18,7 @@ def merge_opts(opts1: ResourceOptions, opts2: ResourceOptions):
 
 def deploy_function_code(name, handler, opts):
     handler_path = handler.replace(".", "-")
-    code_path = f"./code/output/azure/{handler_path}"
+    code_path = f"./serverless_code/output/azure/{handler_path}"
     deploy_code_command = Command(f"deploy-function-code-to-{name}",
                                   interpreter=["/bin/sh", "-c"],
                                   dir=code_path,

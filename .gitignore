@@ -6,5 +6,5 @@ venv/
 *.dev.yaml
 
 *.zip
-code/output/
+serverless_code/output/
 **/apiconfig.yaml
