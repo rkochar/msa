@@ -16,33 +16,18 @@ def merge_opts(opts1: ResourceOptions, opts2: ResourceOptions):
     return ResourceOptions.merge(opts1, opts2)
 
 
-def deploy_function_code(name, handler, opts):
-    handler_path = handler.replace(".", "-")
-    code_path = f"./serverless_code/output/azure/{handler_path}"
-    deploy_code_command = Command(f"deploy-function-code-to-{name}",
-                                  interpreter=["/bin/sh", "-c"],
-                                  dir=code_path,
-                                  create=f"sleep 15 && func azure functionapp publish {name}",
-                                  # create="az ad signed-in-user show --query userPrincipalName --output tsv",
-                                  opts=opts
-                                  )
 
-    endpoint = deploy_code_command.stdout.apply(
-        lambda output: [line.split("Invoke url: ")[1] for line in output.split("\n") if "Invoke url:" in line][0]
-    )
-
-    export(f"function-app-{name}-endpoint", endpoint)
-
-
-def bash_command(name, command, path, debug=False, opts=None):
+def bash_command(name, command, path=".", debug=False, opts=None):
     command = Command(f"command-{name}",
                       interpreter=["/bin/sh", "-c"],
                       dir=path,
                       create=command,
                       opts=opts
                       )
+    print(f"running command: {command.stdout} in path: {path}")
     if debug:
         export(f"command-output-{name}", command.stdout)
+        export(f"command-output-err-{name}", command.stderr)
     return command
 
 

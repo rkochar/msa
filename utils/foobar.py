@@ -9,16 +9,12 @@ def apigw_foobar():
     apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-basic-role",
                                          "lambda-role-attachment", "lambda-iam-policy", "lambda-basic-policy")
 
-    lambda_foo = m.create_lambda("foobar/foo", 'foobar-foo', "foo.foo", template="http", role=apigw_lambda_iam_role)
-    lambda_bar = m.create_lambda("foobar/bar", 'foobar-bar', "bar.bar", template="http", role=apigw_lambda_iam_role,
-                                 imports=["numpy", "pydantic"])
-    lambda_metric = m.create_lambda("metric/gcp", 'metric', "metric.metric", template="http",
-                                    role=apigw_lambda_iam_role, imports=["protobuf", "google-cloud-monitoring", "google-cloud-logging"])
+    #lambda_foo = m.create_lambda("foobar/foo", 'foobar-foo', "foo.foo", template="http", role=apigw_lambda_iam_role)
+    #lambda_bar = m.create_lambda("foobar/bar", 'foobar-bar', "bar.bar", template="http", role=apigw_lambda_iam_role, imports=["pydantic"])
 
-    routes = [
-        ("/foo", "GET", lambda_foo, "foobar-foo", "lambda for foo"),
-        ("/bar", "GET", lambda_bar, "foobar-bar", "lambda for bar"),
-        ("/metric", "GET", lambda_metric, "metric", "lambda for metric"),
-    ]
-    m.create_apigw('foobar', routes, opts=ResourceOptions(depends_on=[lambda_foo, lambda_bar],
-                                                          replace_on_changes=["*"], delete_before_replace=True))
+    #routes = [
+    #    ("/foo", "GET", lambda_foo, "foobar-foo", "lambda for foo"),
+    #    ("/bar", "GET", lambda_bar, "foobar-bar", "lambda for bar"),
+    #]
+    #m.create_apigw('foobar', routes, opts=ResourceOptions(depends_on=[lambda_foo, lambda_bar],
+    #                                                      replace_on_changes=["*"], delete_before_replace=True))

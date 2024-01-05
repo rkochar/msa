@@ -7,7 +7,7 @@ app = func.FunctionApp()
 
 @app.route(route="<route>", auth_level=func.AuthLevel.ANONYMOUS)
 def template(req: func.HttpRequest) -> func.HttpResponse:
-    query_string_parameters = req.params
+    query_parameters = req.params
     headers = req.headers
 
     body = ""
