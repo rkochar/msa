@@ -1,7 +1,7 @@
 from pulumi import Config
 
 from utils.aws import setup_aws
-from utils.msazure import setup_azure
+from utils.msazure import setup_azure_console
 from utils.gcp import setup_gcp
 from utils.helpers import merge_opts, bash_command, flatten
 from utils.synthesizer import synthesize
@@ -40,7 +40,7 @@ class Monad:
             case "gcp":
                 self.gcp_config = setup_gcp()
             case "msazure":
-                self.msazure_config = setup_azure()
+                self.msazure_config = setup_azure_console()
 
 
     def create_vpc(self, name):

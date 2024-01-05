@@ -13,11 +13,12 @@ cloud_provider = config.get("cloud_provider")
 
 
 def synthesize(code_path, handler, template, imports=[]):
+    if cloud_provider == "msazure":
+        synthesize_msazure(code_path, handler, template, imports)
+
     name, function = handler.split(".")
     stub = "http" if template.startswith("http") else "mq"
     new_file_path, req_file_path = f"./serverless_code/output/{cloud_provider}/{code_path}/{name}.py", f'./serverless_code/output/{cloud_provider}/{code_path}/requirements.txt'
-    if cloud_provider == "msazure":
-        new_file_path = f"./serverless_code/output/{cloud_provider}/tmp_files/{code_path}/function_app.py"
 
     makedirs(path.dirname(new_file_path), exist_ok=True)
     copyfile(f"./serverless_code/templates/{cloud_provider}/{stub}.py", new_file_path)
@@ -75,10 +76,10 @@ def append_file(new_file_path, old_file_path):
 def synthesize_msazure(code_path, handler, template, imports=[]):
     name, function = handler.split(".")
 
-    #stub = "http" if template.startswith("http") else "mq"
+    stub = "http" if template.startswith("http") else "mq"
     # TODO: Copy a stub
     copy_tree(f"./serverless_code/templates/{cloud_provider}/{stub}", f"./serverless_code/output/{cloud_provider}/{code_path}")
-    new_file_path, req_file_path = f"./serverless_code/output/tmp_files/{cloud_provider}/{code_path}/function_app.py", f'./serverless_code/output/{cloud_provider}/{code_path}/requirements.txt'
+    new_file_path, req_file_path = f"./serverless_code/output/{cloud_provider}/{code_path}/function_app.py", f'./serverless_code/output/{cloud_provider}/{code_path}/requirements.txt'
     makedirs(path.dirname(new_file_path), exist_ok=True)
 
     function_parameters = "headers, query_parameters" if template.startswith("http") else "message"

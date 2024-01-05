@@ -2,11 +2,15 @@ from os import makedirs
 import re
 
 from pulumi_azure.appservice import FunctionApp
-from pulumi import export, Output, ResourceOptions
+from pulumi import export, Output, ResourceOptions, Config
 from pulumi_command.local import Command
 
 from utils.helpers import bash_command
 from utils.synthesizer import replace
+
+
+config = Config("azure")
+location = config.get("location") or "West Europe"
 
 
 def create_function_app(code_path, name, handler, environment, http_trigger=True, sqs=None, ram=256, runtime="python3.10", msazure_config=None, opts=None):
@@ -14,12 +18,11 @@ def create_function_app(code_path, name, handler, environment, http_trigger=True
     version = runtime.split(language)[1]
     function_app = FunctionApp(name,
                                name=name,
-                               resource_group_name=msazure_config.get("resource_group").name,
-                               storage_account_name=msazure_config.get("storage_account").name,
-                               storage_account_access_key=msazure_config.get("storage_account").primary_access_key,
+                               resource_group_name=msazure_config.get("resource_group_name"), # msazure_config.get("resource_group").name,
+                               storage_account_name=msazure_config.get("storage_account_name"), # msazure_config.get("storage_account").name,
+                               storage_account_access_key="jY1JH1cYOMOkUidodhmx6N8KCtmkPXCwo/4/4kJXaybQCzuOdaHI4eS0b0je3OHyEVR2g8u5/n6O+AStxNXDtA==", # msazure_config.get("storage_account").primary_access_key,
                                app_service_plan_id=msazure_config.get("app_service_plan").id,
-
-                               location=msazure_config.get("resource_group").location,
+                               location=location,
                                os_type="linux",
                                version="~4",
 
@@ -38,9 +41,9 @@ def create_function_app(code_path, name, handler, environment, http_trigger=True
                                opts=opts
                                )
     function_code = f"./serverless_code/output/msazure/{code_path}"
-    create_function_template(function_code, code_path, name)
-    deploy_function(function_code, name, msazure_config, opts=ResourceOptions(depends_on=[function_app]))
-    #deploy_function_code(function_code, name, handler, opts=ResourceOptions(depends_on=[function_app]))
+    #create_function_template(function_code, code_path, name)
+    #deploy_function(function_code, name, msazure_config, opts=ResourceOptions(depends_on=[function_app]))
+    deploy_function_code(function_code, name, handler, opts=ResourceOptions(depends_on=[function_app]))
     export(f"lambda-{name}-hostname", function_app.default_hostname)
     return function_app
 

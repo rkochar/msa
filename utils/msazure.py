@@ -14,6 +14,35 @@ subscription_id = "3d1cfa10-9d74-4a8a-983e-921695f9e20a"
 resource_group_name = "resourcegroup"
 storage_account_name = "storageaccountfaasmonad"
 
+
+def setup_azure_console():
+    resource_group_name = "resourcegroupconsole"
+    storage_account_name = "storageaccfaasconsole"
+    storage_container_name = "storagecontainerconsole"
+
+    app_service_plan = Plan("appserviceplan",
+                            name="appserviceplan",
+                            resource_group_name=resource_group_name,
+                            location=location,
+                            kind="FunctionApp",
+                            reserved=True,
+
+                            sku=PlanSkuArgs(
+                                # name="Y1",
+                                tier="Dynamic",
+                                size="Y1",
+                                # family="Y",
+                                # capacity=0
+                            ),
+                            opts=ResourceOptions(protect=False)
+                            )
+    return {
+        "app_service_plan": app_service_plan,
+        "resource_group_name": resource_group_name,
+        "storage_account_name": storage_account_name,
+        "storage_container_name": storage_container_name
+        }
+
 def setup_azure():
     resource_group = ResourceGroup(resource_group_name,
                                    name=resource_group_name,
