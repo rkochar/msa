@@ -13,4 +13,3 @@ def create_bucket_object(name, bucket, path):
     return BucketObject(name,
                         bucket=bucket.name,
                         source=FileArchive(path))
-

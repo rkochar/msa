@@ -64,6 +64,3 @@ def parse_routes(routes):
         yaml.dump(apiconfig, f)
     f.close()
 
-
-if __name__ == "__main__":
-    parse_routes([("/", "GET", "apigw_lambda_foo"), ("/bar", "GET", "apigw_lambda_bar")])

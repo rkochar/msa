@@ -24,7 +24,7 @@ List of tuples.
 - **GCP:** (path, http request type, NA, name of lambda, description)
 
 ### Message Queue
-Input: (str: topic_name) 
+Input: (str: topic_name)
 
 ### SQL Database
 Input: (str: name, str: engine, str: engine_version, int: storage, str: username, str: password, str: server class)

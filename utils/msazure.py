@@ -6,14 +6,8 @@ from pulumi import Config, ResourceOptions, export
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.storage import StorageManagementClient
 
-
 config = Config("azure")
 location = config.get("location") or "West Europe"
-
-subscription_id = "3d1cfa10-9d74-4a8a-983e-921695f9e20a"
-resource_group_name = "resourcegroup"
-storage_account_name = "storageaccountfaasmonad"
-
 
 def setup_azure_console():
     resource_group_name = "resourcegroupconsole"
@@ -28,11 +22,8 @@ def setup_azure_console():
                             reserved=True,
 
                             sku=PlanSkuArgs(
-                                # name="Y1",
                                 tier="Dynamic",
                                 size="Y1",
-                                # family="Y",
-                                # capacity=0
                             ),
                             opts=ResourceOptions(protect=False)
                             )
@@ -44,6 +35,9 @@ def setup_azure_console():
         }
 
 def setup_azure():
+    resource_group_name = "resourcegroup"
+    storage_account_name = "storageaccountfaasmonad"
+
     resource_group = ResourceGroup(resource_group_name,
                                    name=resource_group_name,
                                    location=location,
@@ -74,11 +68,8 @@ def setup_azure():
                             reserved=True,
 
                             sku=PlanSkuArgs(
-                                # name="Y1",
                                 tier="Dynamic",
                                 size="Y1",
-                                # family="Y",
-                                # capacity=0
                             ),
                             opts=ResourceOptions(protect=False)
                             )
@@ -94,16 +85,5 @@ def setup_azure():
             "storage_account": storage_account,
             "storage_container": storage_container,
             "app_service_plan": app_service_plan,
-            #"storage_account_connection_url" :get_storage_account_connection_url()
             }
 
-
-def get_storage_account_connection_url():
-    credential = DefaultAzureCredential()
-    storage_client = StorageManagementClient(credential, subscription_id)
-    storage_account = storage_client.storage_accounts.get_properties(resource_group_name, storage_account_name)
-
-    keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
-    key = keys.keys[0].value
-    connection_string = f"DefaultEndpointsProtocol=https;AccountName={storage_account_name};AccountKey={key};EndpointSuffix=core.windows.net"
-    print(f"storage_conncetion_string: {connection_string}")

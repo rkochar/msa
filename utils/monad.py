@@ -206,7 +206,7 @@ class Monad:
         return command
 
 
-    def iam_role_json(self, name):  # TODO: Use policyname as filemame
+    def iam_role_json(self, name):
         """
         Get IAM role json file path from name of file according to Cloud Provider.
 
@@ -287,4 +287,3 @@ class Monad:
                 return self.create_iam_role(name, rolefile, opts=opts)
             case "msazure":
                 pass
-

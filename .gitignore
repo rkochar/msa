@@ -8,3 +8,5 @@ venv/
 *.zip
 serverless_code/output/
 **/apiconfig.yaml
+
+**/clifunc/

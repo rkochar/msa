@@ -14,4 +14,3 @@ def create_mq():
     lambda_mq_foo = m.create_lambda("mq", 'lambda-mq', "mq.print_message", role=mq_lambda_iam_role, environment=environment,
                                     template="mq", mq_topic=sqs_transaction,
                                     opts=ResourceOptions(depends_on=[sqs_transaction]))
-

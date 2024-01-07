@@ -1,0 +1,24 @@
+swagger: "2.0"
+info:
+  version: "1.0.0"
+  title: "Azure API Management Gateway"
+host: "foobar-apim-service.azure-api.net"
+schemes:
+  - "https"
+paths:
+  /foobar-foo/foo:
+    get:
+      operationId: "foo"
+      responses:
+        "200":
+          description: "Successful operation"
+      x-ms-backend:
+        url: "https://foobar-foo.azurewebsites.net/api/foo"
+  /foobar-bar/bar:
+    get:
+      operationId: "bar"
+      responses:
+        "200":
+          description: "Successful operation"
+      x-ms-backend:
+        url: "https://foobar-bar.azurewebsites.net/api/bar"
