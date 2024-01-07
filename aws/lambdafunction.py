@@ -96,4 +96,3 @@ def create_lambda_layer(code_path, name, runtime, layer_object):
                                 s3_object_version=layer_object.version_id
                                 )
     return lambda_layer
-

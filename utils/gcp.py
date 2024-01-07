@@ -10,4 +10,3 @@ def setup_gcp():
     return {"google_provider": google_provider,
             "code_bucket": code_bucket
             }
-

@@ -1,7 +1,7 @@
 from pulumi import Config
 
 from utils.aws import setup_aws
-from utils.azure import setup_azure
+from utils.msazure import setup_azure_console
 from utils.gcp import setup_gcp
 from utils.helpers import merge_opts, bash_command, flatten
 from utils.synthesizer import synthesize
@@ -18,9 +18,9 @@ from gcp import cloudfunction as gcp_lambda
 from gcp import pubsub as gcp_pubsub
 from gcp import cloudsql as gcp_sql
 
-from azure import functionapp as azure_functionapp
-from azure import storageblob as azure_storageblob
-from azure import apimanagement as azure_apigw
+from msazure import functionapp as azure_functionapp
+from msazure import storageblob as azure_storageblob
+from msazure import apimanagement as azure_apigw
 
 
 class Monad:
@@ -39,8 +39,8 @@ class Monad:
                 self.aws_config = setup_aws()
             case "gcp":
                 self.gcp_config = setup_gcp()
-            case "azure":
-                self.azure_config = setup_azure()
+            case "msazure":
+                self.msazure_config = setup_azure_console()
 
 
     def create_vpc(self, name):
@@ -75,8 +75,8 @@ class Monad:
                 return aws_apigw.create_apigw(name, routes, opts=opts)
             case "gcp":
                 return gcp_apigw.create_apigw(name, routes, opts=merge_opts(self.gcp_config.get("google_provider"), opts))
-            case "azure":
-                return azure_apigw.create_apigw(name, routes, azure_config=self.azure_config, opts=opts)
+            case "msazure":
+                return azure_apigw.create_apigw(name, routes, msazure_config=self.msazure_config, opts=opts)
 
 
     def create_lambda(self, code_path, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], opts=None):
@@ -115,10 +115,10 @@ class Monad:
                                                   min_instance=min_instance, max_instance=max_instance,
                                                   ram=ram, timeout_seconds=timeout_seconds,
                                                   gcp_config=self.gcp_config, imports=imports, opts=opts)
-            case "azure":
-                # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], azure_config=self.azure_config, opts=opts)
-                func = azure_functionapp.create_function_app(name, handler, environment, http_trigger=http_trigger,
-                                                             sqs=mq_topic, ram=ram, azure_config=self.azure_config,
+            case "msazure":
+                # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], msazure_config=self.msazure_config, opts=opts)
+                func = azure_functionapp.create_function_app(code_path, name, handler, environment, http_trigger=http_trigger,
+                                                             sqs=mq_topic, ram=ram, msazure_config=self.msazure_config,
                                                              opts=opts)
                 return func
 
@@ -144,7 +144,7 @@ class Monad:
                 return gcp_pubsub.create_pubsub(topic_name, message_retention_seconds=message_retention_seconds,
                                                 environment=environment,
                                                 opts=opts)
-            case "azure":
+            case "msazure":
                 pass
 
 
@@ -162,7 +162,7 @@ class Monad:
             case "gcp":
                 if size == "small":
                     return "db-f1-micro"
-            case "azure":
+            case "msazure":
                 pass
 
 
@@ -194,7 +194,7 @@ class Monad:
             case "gcp":
                 return gcp_sql.create_sql_database(name, engine, engine_version, username,
                                                    password, instance_class, environment, opts=opts)
-            case "azure":
+            case "msazure":
                 pass
 
 
@@ -206,7 +206,7 @@ class Monad:
         return command
 
 
-    def iam_role_json(self, name):  # TODO: Use policyname as filemame
+    def iam_role_json(self, name):
         """
         Get IAM role json file path from name of file according to Cloud Provider.
 
@@ -218,7 +218,7 @@ class Monad:
                 return f"./iam-policy-files/aws/{name}.json"
             case "gcp":
                 return "roles/cloudfunctions.invoker"
-            case "azure":
+            case "msazure":
                 pass
 
 
@@ -238,7 +238,7 @@ class Monad:
                 return aws_iam.create_iam_role(name, rolefile, opts=opts)
             case "gcp":
                 return rolefile
-            case "azure":
+            case "msazure":
                 pass
 
 
@@ -261,7 +261,7 @@ class Monad:
                 return aws_iam.create_role_policy_attachment(name, policyname, policyfile, rolename, rolefile, opts=opts)
             case "gcp":
                 pass
-            case "azure":
+            case "msazure":
                 pass
 
 
@@ -285,6 +285,5 @@ class Monad:
                     return self.create_role_policy_attachment(rolename, rolefile, name, policyname, policyfile, opts=opts)
             case "gcp":
                 return self.create_iam_role(name, rolefile, opts=opts)
-            case "azure":
+            case "msazure":
                 pass
-

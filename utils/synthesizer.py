@@ -1,11 +1,9 @@
-from shutil import copyfile, copytree, move, rmtree
-from os import path, makedirs
+from shutil import copyfile, copytree, move, rmtree, move, copymode
+from os import path, makedirs, fdopen, remove
+from distutils.dir_util import copy_tree
+from tempfile import mkstemp
 
 from pulumi import Config
-
-from tempfile import mkstemp
-from shutil import move, copymode
-from os import fdopen, remove
 
 config = Config()
 cloud_provider = config.get("cloud_provider")
@@ -13,12 +11,21 @@ cloud_provider = config.get("cloud_provider")
 
 def synthesize(code_path, handler, template, imports=[]):
     name, function = handler.split(".")
-
     stub = "http" if template.startswith("http") else "mq"
-    new_file_path, req_file_path = f"./serverless_code/output/{cloud_provider}/{code_path}/{name}.py", f'./serverless_code/output/{cloud_provider}/{code_path}/requirements.txt'
+    new_file_path = get_new_file_path(code_path, stub, name)
+
     makedirs(path.dirname(new_file_path), exist_ok=True)
     copyfile(f"./serverless_code/templates/{cloud_provider}/{stub}.py", new_file_path)
 
+    imports, new_string = synthesize_code(new_file_path, function, template, imports)
+    replace(new_file_path, 'body = ""', new_string)
+    append_file(new_file_path, f"./serverless_code/common/{code_path}/{name}.py")
+    replace(new_file_path, "<route>", function)
+
+    synthesize_requirements(code_path, imports)
+
+
+def synthesize_code(new_file_path, function, template, imports):
     function_parameters = "headers, query_parameters" if template.startswith("http") else "message"
     new_string = f"body = {function}({function_parameters})"
 
@@ -35,12 +42,15 @@ def synthesize(code_path, handler, template, imports=[]):
         if cloud_provider == "gcp":
             imports.append("google-cloud-pubsub")
 
-    replace(new_file_path, 'body = ""', new_string)
-    append_file(new_file_path, f"./serverless_code/common/{code_path}/{name}.py")
+    return imports, new_string
+
+
+def synthesize_requirements(code_path, imports=[]):
+    req_file_path = f'./serverless_code/output/{cloud_provider}/{code_path}/requirements.txt'
 
     if len(imports) > 0:
         makedirs(path.dirname(req_file_path), exist_ok=True)
-        with open(req_file_path, mode='wt', encoding='utf-8') as reqfile:
+        with open(req_file_path, mode='a', encoding='utf-8') as reqfile:
             reqfile.writelines(list(map(lambda x: x + "\n", imports)))
 
 
@@ -67,4 +77,12 @@ def append_file(new_file_path, old_file_path):
 
     new_file.close()
     old_file.close()
+
+
+def get_new_file_path(code_path, stub, name):
+    if cloud_provider == "msazure":
+        copy_tree(f"./serverless_code/templates/{cloud_provider}/{stub}", f"./serverless_code/output/{cloud_provider}/{code_path}")
+        return f"./serverless_code/output/{cloud_provider}/{code_path}/function_app.py"
+    else:
+        return f"./serverless_code/output/{cloud_provider}/{code_path}/{name}.py"
 

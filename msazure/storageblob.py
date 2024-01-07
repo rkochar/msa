@@ -7,7 +7,7 @@ from shutil import make_archive
 
 def create_storage_blob(name, functionapp, azure_config=None, opts=None):
     resource_group, storage_account, storage_container, app_service_plan = azure_config
-    file = "./serverless_code/azure/" + functionapp
+    file = "./serverless_code/msazure/" + functionapp
     make_archive(file, "zip", file)
     blob = Blob(
         name,

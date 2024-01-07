@@ -1,0 +1,28 @@
+openapi: 3.0.1
+info:
+  title: Chuck Norris API
+  description: This is the OpenAPI documentation on the chuck norris API. This API was built in the cloud engineering bootcamp in Azure. A large reason why API documentation is important is to increase API adoption. Comprehensive documentation on all of the functionality, how to effectively use and integrate, and updates on the API lifecycle improves the experience for those using your APIs. Could you use an API without documentation? Sure, it’s technically possible. But you can grasp the API’s technical content and integration instructions much better with complete and accurate documentation. API documentation is important in your lifecycle. But do you know everything there is to know about the lifecycle? Explore our hub and become an expert today.
+  version: '0.1'
+servers:
+  - url: https://foobar-apim-service.azure-api.net
+paths:
+  /foobar-foo/foo:
+    get:
+      description: Returns all possible joke categories.
+      responses:
+        '200':
+          description: An example of a successful GET call.
+      servers:
+        - url: https://foobar-apim-service.azure-api.net/api
+    servers:
+      - url: https://foobar-apim-service.azure-api.net/api
+  /foobar-bar/bar:
+    get:
+      description: Returns a random chuck norris joke retrieved from the chuck-norris.io API. This API ensures that no offensive jokes are sent.
+      responses:
+        '200':
+          description: An example of a successful GET call.
+      servers:
+        - url: https://foobar-apim-service.azure-api.net/api
+    servers:
+      - url: https://foobar-apim-service.azure-api.net/api

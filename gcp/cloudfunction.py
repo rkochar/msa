@@ -67,4 +67,3 @@ def event_trigger_config(http_trigger, topic):
 def get_file_extension(runtime: str):
     if runtime.startswith("python"):
         return ".py"
-

@@ -23,4 +23,3 @@ class Transaction(BaseModel):
     sender: int = Field(ge=1, le=5)
     receiver: int = Field(ge=1, le=5)
     amount: int = Field(ge=1, le=10)
-

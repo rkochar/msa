@@ -44,5 +44,3 @@ def create_vpc_endpoint(name, service, aws_config):
                                service_name=f"com.amazonaws.{region}.{service}",
                                vpc_endpoint_type="Interface"
                                )
-
-
