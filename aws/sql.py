@@ -1,11 +1,8 @@
 from pulumi import export
 from pulumi_aws.rds import Instance
 
-from aws.secretsmanager import create_secret
 
-
-def create_sql_database(name, engine, engine_version, storage, username, password, instance_class="db.t3.micro",
-                        environment={}, aws_config=None, opts=None):
+def create_sql_database(name, engine, engine_version, storage, username, password, instance_class="db.t3.micro", environment={}, aws_config=None, opts=None):
     """
     Create SQL database.
 

@@ -42,7 +42,6 @@ class Monad:
             case "msazure":
                 self.msazure_config = setup_azure_console()
 
-
     def create_vpc(self, name):
         match self.cloud_provider:
             case "aws":
@@ -51,7 +50,6 @@ class Monad:
                 self.aws_config["subnet_a"] = subnet_a
                 self.aws_config["subnet_b"] = subnet_b
                 self.aws_config["subnet_group"] = subnet_group
-
 
     def create_vpc_endpoint(self, name, service):
         match self.cloud_provider:
@@ -79,17 +77,17 @@ class Monad:
                 return azure_apigw.create_apigw(name, routes, msazure_config=self.msazure_config, opts=opts)
 
 
-    def create_lambda(self, code_path, name, handler, role=None, environment={}, template="http", mq_topic=None, sqldb=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], opts=None):
+    def create_lambda(self, code_path, name, handler, role=None, template="http", environment={}, mq_topic=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], opts=None):
         """
         Create Lambda and synthesize it's serverless_code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
 
-        :param imports:
         :param code_path:
         :param name: of Lambda
         :param handler: method that will be called when a Lambda is triggered.
         :param role: IAM role of Lambda
         :param environment: environment variables passed to Lambda
+        :param imports: list of strings to import into serverless function
         :param template: type of Lambda: eg. http, mq, sql
         :param mq_topic: if template is not http, SQS object that will trigger Lambda
         :param min_instance: min number of Lambda instances (GCP only)
@@ -105,16 +103,16 @@ class Monad:
 
         match self.cloud_provider:
             case "aws":
-                return aws_lambda.create_lambda(code_path, name, handler, role, environment,
-                                                template, http_trigger=http_trigger, sqs=mq_topic, sqldb=sqldb,
+                return aws_lambda.create_lambda(code_path, name, handler, role, template,
+                                                environment, imports=imports, sqs=mq_topic,
                                                 ram=ram, timeout_seconds=timeout_seconds,
-                                                aws_config=self.aws_config, imports=imports, opts=opts)
+                                                aws_config=self.aws_config, opts=opts)
             case "gcp":
-                return gcp_lambda.create_lambdav2(code_path, name, handler, role, environment,
+                return gcp_lambda.create_lambdav2(code_path, name, handler, role, environment, imports=imports,
                                                   http_trigger=http_trigger, topic=mq_topic,
                                                   min_instance=min_instance, max_instance=max_instance,
                                                   ram=ram, timeout_seconds=timeout_seconds,
-                                                  gcp_config=self.gcp_config, imports=imports, opts=opts)
+                                                  gcp_config=self.gcp_config, opts=opts)
             case "msazure":
                 # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], msazure_config=self.msazure_config, opts=opts)
                 func = azure_functionapp.create_function_app(code_path, name, handler, environment, http_trigger=http_trigger,
@@ -146,7 +144,6 @@ class Monad:
                                                 opts=opts)
             case "msazure":
                 pass
-
 
     def get_instance_class_sql(self, size):
         """

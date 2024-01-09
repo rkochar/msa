@@ -9,6 +9,17 @@ region = config.require("region")
 
 
 def create_vpc_and_subnet(name):
+    """
+    Create VPC and a subnet group of two subnets.
+
+    Parameters
+    ----------
+    name: of VPC and subnet.
+
+    Returns vpc, subnet_a, subnet_b and subnet_group
+    -------
+
+    """
     vpc = Vpc(f"vpc-{name}",
               cidr_block="10.0.0.0/16",
               enable_dns_support=True,
@@ -35,6 +46,19 @@ def create_vpc_and_subnet(name):
 
 
 def create_vpc_endpoint(name, service, aws_config):
+    """
+    Create VPC endpoint.
+
+    Parameters
+    ----------
+    name: of vpc endpoint
+    service: AWS service to make endpoint for
+    aws_config: 
+
+    Returns VPC Endpoint object
+    -------
+
+    """
     vpc, subnet_a, subnet_b = aws_config.get("vpc"), aws_config.get("subnet_a"), aws_config.get("subnet_b")
     vpc_endpoint = VpcEndpoint(f"vpc-endpoint-{name}",
                                vpc_id=vpc.id,
