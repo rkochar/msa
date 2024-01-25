@@ -53,7 +53,7 @@ def create_vpc_endpoint(name, service, aws_config):
     ----------
     name: of vpc endpoint
     service: AWS service to make endpoint for
-    aws_config: 
+    aws_config: AWS configuration
 
     Returns VPC Endpoint object
     -------

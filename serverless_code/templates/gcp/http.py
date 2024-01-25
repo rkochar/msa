@@ -1,14 +1,19 @@
 import functions_framework
 from os import getenv
 from time import time
+from uuid import uuid4
 
 
 @functions_framework.http
 def template(request):
-    query_parameters = request.args
-    headers = request.headers
-    start_time = time()
+    name = ""
+    <start-time>
+    <start-span>
+    query_parameters, headers = request.args, request.headers
 
     body = ""
 
-    return {"body": body, "execution_time": str(time() - start_time)}, 200
+    <end-time>
+    <end-span>
+
+    return {"body": body,}, 200

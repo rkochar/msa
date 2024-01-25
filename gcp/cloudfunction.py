@@ -9,7 +9,7 @@ region = config.get("region")
 project = config.get("project")
 
 
-def create_lambdav2(code_path, name, handler, role, environment, http_trigger, topic, min_instance=1, max_instance=3, ram="256M", timeout_seconds=60, runtime="python310", imports=None, gcp_config=None, opts=None):
+def create_lambdav2(name, code_path, handler, runtime="python310", role=None, environment={}, http_trigger=True, topic=None, min_instance=1, max_instance=3, ram="256M", timeout_seconds=60, imports=None, gcp_config=None, opts=None):
     """
     Create a Cloud Function v2.
 
@@ -40,6 +40,7 @@ def create_lambdav2(code_path, name, handler, role, environment, http_trigger, t
     bucket_object = create_bucket_object(f"{name}-object", bucket, f"./serverless_code/output/gcp/{code_path}/")
 
     # Serverless function
+    runtime = runtime.replace(".", "")
     function = Function(name,
                         name=name,
                         location=region,

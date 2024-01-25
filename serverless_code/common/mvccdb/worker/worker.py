@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, validator
 
 
 def check_transaction(headers, query_parameters):
@@ -23,3 +23,9 @@ class Transaction(BaseModel):
     sender: int = Field(ge=1, le=5)
     receiver: int = Field(ge=1, le=5)
     amount: int = Field(ge=1, le=10)
+
+    @validator("receiver")
+    def unique_sender_receiver(cls, receiver, values):
+        if "sender" in values and receiver == values["sender"]:
+            raise ValueError("Sender and receiver must be unique")
+        return receiver

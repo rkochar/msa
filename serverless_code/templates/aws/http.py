@@ -3,16 +3,21 @@ import boto3
 from os import getenv
 import re
 from time import time
+from uuid import uuid4
 
 
 def template(event, context):
-    start_time = time()
-    query_parameters = event.get("queryStringParameters") or {}
-    headers = event.get("headers") or {}
+    name = ""
+    <start-time>
+    <start-span>
+    query_parameters, headers = event.get("queryStringParameters") or {}, event.get("headers") or {}
 
     body = ""
 
+    <end-time>
+    <end-span>
+
     return {
         "statusCode": 200,
-        "body": json.dumps({"body": body, "execution_time": str(time() - start_time)})
+        "body": json.dumps({"body": body,})
     }

@@ -7,9 +7,10 @@ from pulumi import Config
 
 config = Config()
 cloud_provider = config.get("cloud_provider")
+NEW_LINE_TAB, TAB = "\n    ", "    "
 
 
-def synthesize(code_path, handler, template, imports=[]):
+def synthesize(function_name, code_path, handler, template, imports=[], is_time=True, is_telemetry=True):
     name, function = handler.split(".")
     stub = "http" if template.startswith("http") else "mq"
     new_file_path = get_new_file_path(code_path, stub, name)
@@ -17,16 +18,63 @@ def synthesize(code_path, handler, template, imports=[]):
     makedirs(path.dirname(new_file_path), exist_ok=True)
     copyfile(f"./serverless_code/templates/{cloud_provider}/{stub}.py", new_file_path)
 
+    replace(new_file_path, 'name = ""', f'name = "{function_name}"')
     imports, new_string = synthesize_code(new_file_path, function, template, imports)
-    replace(new_file_path, 'body = ""', new_string)
-    append_file(new_file_path, f"./serverless_code/common/{code_path}/{name}.py")
-    replace(new_file_path, "<route>", function)
+    setup_template(new_file_path, new_string, code_path, name, function, function_name)
+    telemetry_monad(is_time, is_telemetry, new_file_path, template)
+    time_monad(is_time, is_telemetry, new_file_path)
 
     synthesize_requirements(code_path, imports)
 
 
+def time_monad(is_time, is_telemetry, new_file_path):
+    START_TIME, START_TIME_STRING, END_TIME = "<start-time>", "start_time = time()", "<end-time>"
+    if is_time:
+        replace(new_file_path, START_TIME, START_TIME_STRING)
+        replace(new_file_path, '"body": body,', '"body": body, "execution_time": str(time() - start_time), ')
+
+        end_time_string = 'end_time = time()' + NEW_LINE_TAB + 'execution_time = str(end_time - start_time)' + NEW_LINE_TAB + 'print(f"execution_time: {execution_time}")'
+        replace(new_file_path, END_TIME, end_time_string)
+    else:
+        if is_telemetry:
+            replace(new_file_path, START_TIME, START_TIME_STRING)
+        replace(new_file_path, TAB + START_TIME + "\n", "")
+        replace(new_file_path, TAB + END_TIME + "\n", "")
+
+
+def telemetry_monad(is_time, is_telemetry, new_file_path, template):
+    if is_telemetry:
+        start_span_string = "hex = uuid4().hex"
+        start_span_string += NEW_LINE_TAB + 'span = {"span_id": hex, "name": name, "start_time": start_time, "annotations": []}' + NEW_LINE_TAB + 'span["span_depth"], span["parent_span_id"] = 1, None'
+        replace(new_file_path, "<start-span>", start_span_string)
+
+        span_string = 'span["end_time"] = ' + ("end_time" if is_time else "time()") + NEW_LINE_TAB + ("" if template.startswith("http") else TAB) + 'span["execution_time"] = str(span.get("end_time") - span.get("start_time"))'
+        replace(new_file_path, "<end-span>", span_string)
+        replace(new_file_path, '"body": body,', f'"body": body, "span": span, ')
+
+        configure_span(new_file_path, template)
+    else:
+        replace(new_file_path, TAB + TAB + "<end-span>\n", "")
+        replace(new_file_path, TAB + "<end-span>\n", "")
+        replace(new_file_path, "<start-span>", "span = None")
+
+
+def configure_span(new_file_path, template):
+    if template.startswith("http"):
+        replace(new_file_path, "<span_depth>", "1")
+        replace(new_file_path, "<parent_span>", "None")
+    elif template == "mq" or "_mq" in template:
+        pass
+
+
+def setup_template(new_file_path, new_string, code_path, name, function, function_name):
+    replace(new_file_path, 'body = ""', new_string)
+    append_file(new_file_path, f"./serverless_code/common/{code_path}/{name}.py")
+    replace(new_file_path, "<route>", function)  # For azure
+
+
 def synthesize_code(new_file_path, function, template, imports):
-    function_parameters = "headers, query_parameters" if template.startswith("http") else "message"
+    function_parameters = "headers, query_parameters" if template.startswith("http") else 'message.get("body")'
     new_string = f"body = {function}({function_parameters})"
 
     if "sql" in template:
@@ -37,8 +85,8 @@ def synthesize_code(new_file_path, function, template, imports):
 
     if template.endswith("_pub"):
         append_file(new_file_path, f"./serverless_code/templates/{cloud_provider}/pub.py")
-        new_string = f"body = {function}({function_parameters})" + "\n    "
-        new_string += "if not body.startswith('Errors found: '):"+ "\n        " + "body = publish_message(body)"
+        new_string = f"body = {function}({function_parameters})" + NEW_LINE_TAB
+        new_string += "if not body.startswith('Errors found: '):"+ NEW_LINE_TAB + TAB + 'body = publish_message(str({"span": span, "body": body}))'
         if cloud_provider == "gcp":
             imports.append("google-cloud-pubsub")
 

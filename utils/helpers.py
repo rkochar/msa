@@ -24,7 +24,6 @@ def bash_command(name, command, path=".", debug=False, opts=None):
                       create=command,
                       opts=opts
                       )
-    print(f"running command: {command.stdout} in path: {path}")
     if debug:
         export(f"command-output-{name}", command.stdout)
         export(f"command-output-err-{name}", command.stderr)

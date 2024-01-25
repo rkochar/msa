@@ -77,7 +77,7 @@ class Monad:
                 return azure_apigw.create_apigw(name, routes, msazure_config=self.msazure_config, opts=opts)
 
 
-    def create_lambda(self, code_path, name, handler, role=None, template="http", environment={}, mq_topic=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], opts=None):
+    def create_lambda(self, name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, mq_topic=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], is_time=True, is_telemetry=True, opts=None):
         """
         Create Lambda and synthesize it's serverless_code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
@@ -98,17 +98,17 @@ class Monad:
         :return: Lambda object
         """
 
-        synthesize(code_path, handler, template=template, imports=imports)
+        synthesize(name, code_path, handler, template=template, imports=imports, is_time=is_time, is_telemetry=is_telemetry)
         http_trigger = True if template.startswith("http") or template == "sql" else False
 
         match self.cloud_provider:
             case "aws":
-                return aws_lambda.create_lambda(code_path, name, handler, role, template,
+                return aws_lambda.create_lambda(name, code_path, handler, runtime, role, template,
                                                 environment, imports=imports, sqs=mq_topic,
                                                 ram=ram, timeout_seconds=timeout_seconds,
                                                 aws_config=self.aws_config, opts=opts)
             case "gcp":
-                return gcp_lambda.create_lambdav2(code_path, name, handler, role, environment, imports=imports,
+                return gcp_lambda.create_lambdav2(name, code_path, handler, runtime, role, environment, imports=imports,
                                                   http_trigger=http_trigger, topic=mq_topic,
                                                   min_instance=min_instance, max_instance=max_instance,
                                                   ram=ram, timeout_seconds=timeout_seconds,
