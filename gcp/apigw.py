@@ -12,6 +12,19 @@ region = config.get("region")
 
 
 def create_apigw(name, routes, opts=None):
+    """
+    Create a API, API Config and API Gateway.
+
+    Parameters
+    ----------
+    name: of API
+    routes: map endpoints to serverless functions
+    opts: of Pulumi
+
+    Returns API object
+    -------
+
+    """
     apigw = gcp.apigateway.Api(name, api_id=f"apigw-id-{name}", project=project, opts=opts)
     api_config = create_api_config(name, apigw, routes=routes, opts=merge_opts(opts, ResourceOptions(depends_on=[apigw])))
     gateway = create_api_gateway(name, api_config, opts=merge_opts(opts, ResourceOptions(depends_on=[api_config])))
@@ -21,6 +34,20 @@ def create_apigw(name, routes, opts=None):
 
 
 def create_api_config(name, apigw, routes, opts=None):
+    """
+    Create an API Config for API.
+
+    Parameters
+    ----------
+    name: of API
+    apigw: API in which the config will be created
+    routes: map endpoints to serverless functions
+    opts: of Pulumi
+
+    Returns an API Config object
+    -------
+
+    """
     parse_routes(routes)
     return gcp.apigateway.ApiConfig(f"{name}-config",
                                     api=apigw.api_id,
@@ -36,6 +63,19 @@ def create_api_config(name, apigw, routes, opts=None):
 
 
 def create_api_gateway(name, api_config, opts=None):
+    """
+    Creeate an API Gateway.
+
+    Parameters
+    ----------
+    name: of API
+    api_config: API Config in which API Gateway will be created
+    opts: of Pulumi
+
+    Returns
+    -------
+
+    """
     return gcp.apigateway.Gateway(f"{name}-gateway",
                                   project=project,
                                   region=region,
@@ -45,6 +85,17 @@ def create_api_gateway(name, api_config, opts=None):
 
 
 def parse_routes(routes):
+    """
+    Parse routes into a Swagger yaml file.
+
+    Parameters
+    ----------
+    routes: map endpoints to serverless functions
+
+    Returns None
+    -------
+
+    """
     with open("./gcp/apiconfigtemplate.yaml") as f:
         apiconfig = yaml.full_load(f)
     f.close()
