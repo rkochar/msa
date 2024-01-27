@@ -1,35 +1,17 @@
 # faas-monad
+This repository contains code written for my master thesis at Technical University of Delft.
+
+The Infrastructure of Code tool used is [Pulumi](https://www.pulumi.com/). Get started with
+```commandline
+pip install requirements.txt
+```
 
 ## Examples
-- **foobar:**
+`__main__.py` is the default starting point of Pulumi. `pulumi preview`, `pulumi up` and `pulumi destroy` are the equivalents of `terragrunt plan`, `terragrunt apply` and `terragrunt destroy`. Run these commands in root directory.
+
+To get started, some sample programs are already provided. Simply uncomment them in the main file to run it.
+- **foobar:**: A simple API application with two endpoints `/foo` and `/bar` that point to a serverless function with some business logic. foo is a simple hello world program (`/foo?name=<name>`) and bar is more complex. It imports two packages numpy and pydantic to validate a transaction. Pass headers `sender`, `receiver` and `amount`. Note: in AWS, bar will create a custom layer for Lambda with the imports which can be a challenge if host machine architecture does not match architecture of the Lambda. Set architecture in [Pulumi Config](#Pulumi-Config) to fix this.
 - **mvcc:**
-
-## Components
-
-### Lambda
-Input: (str: name of lambda, str: <filename>.<function name>, Either[str, IAMRole]role, dict: environment, bool: http_trigger, str: topic, int: min_instance, int: max_instance, int: ram, int: timeout_seconds)
-AWS layers require wheels. GCP has a requirements.txt (per lambda).
-GCP easily provides min and max lambda instances. AWS has [Provisioned Concurrency](https://aws.amazon.com/blogs/aws/new-provisioned-concurrency-for-lambda-functions/), it is paid. Using the default auto-scaler gives sufficient performace.
-
-### IAM Role
-Input: (str: name of role, str: description)
-Can not use a ResourceOption because Google treats IAM roles differently than AWS.
-
-### API Gateway
-Input: (str: name of apigw, List[Route]: routes)
-
-#### Route
-List of tuples.
-- **AWS:** (path, http request type, the lambda variable)
-- **GCP:** (path, http request type, NA, name of lambda, description)
-
-### Message Queue
-Input: (str: topic_name)
-
-### SQL Database
-Input: (str: name, str: engine, str: engine_version, int: storage, str: username, str: password, str: server class)
-GCP does not use amount of storage (default 10, of server class small). engine is "mysql" or "postgres". Enter version as "major.minor.patch".
-AWS will export an endpoint. GCP will export public, private ip addresses and an endpoint.
 
 ## Pulumi Config
 ```commandline
@@ -43,3 +25,13 @@ pulumi config set gcp:project <project name>
 
 pulumi config set azure:location "West Europe"
 ```
+
+## TODO and Ideas
+- [] Confirm requirements.txt works
+- [] Document code
+- [] Create documentation for users
+- [] Create tutorial for users
+- [] Integrate into a CI/CD pipeline
+- [] Add some tests
+- [] Policy as Code
+- [] Serverless functions can also run a docker image. Integrate Packer (image-as-code)?
