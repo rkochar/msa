@@ -4,6 +4,7 @@ from utils.chain import chain
 from utils.mvccdb import create_mvccdb
 
 apigw_foobar()
-# create_mq()
 # chain()
 # create_mvccdb()
+# zookeeper()
+# mapreduce()

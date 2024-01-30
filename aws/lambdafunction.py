@@ -12,8 +12,8 @@ def create_lambda(name, code_path, handler, runtime="python3.10", role=None, tem
 
     If Lambda is triggered by MQ, AWS requires SQS url in environment.
 
-    :param code_path:
     :param name: of lambda
+    :param code_path: location of code to be put into Lambda
     :param handler: <python file>.<method name> that will be called when the Lambda is triggered
     :param role: IAM role of Lambda
     :param environment: environment variables available to Lambda

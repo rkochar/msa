@@ -3,6 +3,12 @@ This is light weight documentation intended for survey participants. This docume
 
 Serverless functions have unique code for every cloud provider which makes being agnostic challenging. To solve this, templates are offered which will use the monadic approach to unify the unique specifications and requirements of every cloud provider. The beauty of monads is that the heavy lifting is done behind the scenes and developers are not exposed to any of the nastiness. A similar approach is taken with cloud agnostic infrastructure code.
 
+## Building a Simple API Application
+Create an API with two endpoints, `\one` to implement FizzBuzz and `\two` to accept a transaction, validate it, if validation succeeds, send it over a message queue to another serverless function to write it to a database.
+
+### FizzBuzz
+It is a classic problem given to beginners to learn if-else statements. A number is given as input and the program will return `Fizz` and `Buzz` if the number if divisible by 3 and 5 respectively. `FizzBuzz` is returned when the number is divisble by both 3 and 5, other return `No FizzBuzz`.
+
 ## Cloud Agnostic Business Logic
 ### HTTP
 A simple HTTP triggered serverless function. Developers can access headers and query parameters passed with the curl request to trigger a the HTTP serverless function.
@@ -45,6 +51,51 @@ In AWS, RDS lives inside a VPC (Virutal Private Cloud) which means a default Lam
 This is achieved through custom base modules. 
 
 `pydoc3 -p 8081` in root dir to generate documentation from docstrings.
+
+### Setup
+
+```python
+from utils.monad import Monad
+
+m = Monad()
+```
+
+### Serverless Function
+Example
+```python
+lambda_foo = m.create_lambda('foobar-foo', "foobar/foo", "foo.foo", template="http", role=apigw_lambda_iam_role, is_time=False)
+```
+
+### Message Queue
+Example
+```python
+sqs_transaction, environment = m.create_message_queue(topic_name='transaction', environment=environment)
+```
+
+### SQL Database
+Example
+```python
+sqldb, sqldb_lambda_environment = m.create_sql_database("sqldb", "mysql", "8.0.34", 10, "foouser", "foopass123", "small")
+```
+
+### API Gateway
+Example
+```python
+routes = [("/foo", "GET", lambda_foo, "foobar-foo", "lambda for foo"),]
+m.create_apigw('foobar', routes, opts=ResourceOptions(depends_on=[lambda_foo], replace_on_changes=["*"], delete_before_replace=True))
+```
+
+### IAM Roles
+```python
+# Basic Lambda Role
+apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-basic-role", "lambda-role-attachment", "lambda-iam-policy", "lambda-basic-policy")
+
+# Message Queue
+mq_lambda_iam_role = m.create_iam("apigw-lambda-iam-role", "lambda-basic-role", "lambda-role-attachment", "sqs-policy", "message-queue-policy"
+
+# SQL
+sql_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-basic-role", "sql-attachment", "sql-policy", "mq-sql-policy")
+```
 
 <!--
 ### Lambda
