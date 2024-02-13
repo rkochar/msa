@@ -12,6 +12,8 @@ from aws import iam as aws_iam
 from aws import sqs as aws_sqs
 from aws import sql as aws_sql
 from aws import vpc as aws_vpc
+from aws import dynamodb as aws_dynamodb
+from aws import s3 as aws_s3
 
 from gcp import apigw as gcp_apigw
 from gcp import cloudfunction as gcp_lambda
@@ -77,7 +79,7 @@ class Monad:
                 return azure_apigw.create_apigw(name, routes, msazure_config=self.msazure_config, opts=opts)
 
 
-    def create_lambda(self, name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, mq_topic=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], is_timed=True, is_telemetry=True, opts=None):
+    def create_lambda(self, name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, mq_topic=None, dynamodb=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], is_timed=True, is_telemetry=True, opts=None):
         """
         Create Lambda and synthesize it's serverless_code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
@@ -89,7 +91,8 @@ class Monad:
         :param environment: environment variables passed to Lambda
         :param imports: list of strings to import into serverless function
         :param template: type of Lambda: eg. http, mq, sql
-        :param mq_topic: if template is not http, SQS object that will trigger Lambda
+        :param mq_topic: if serverless function is triggered by a message queue, SQS object that will trigger Lambda
+        :param dynamodb: if serverless function is triggered by an event in dynamodb, DynamoDB object that will trigger Lambda
         :param min_instance: min number of Lambda instances (GCP only)
         :param max_instance: max number of Lambda instances (GCP only)
         :param ram: available to Lambda
@@ -104,7 +107,7 @@ class Monad:
         match self.cloud_provider:
             case "aws":
                 return aws_lambda.create_lambda(name, code_path, handler, runtime, role, template,
-                                                environment, imports=imports, sqs=mq_topic,
+                                                environment, imports=imports, sqs=mq_topic, dynamodb=dynamodb,
                                                 ram=ram, timeout_seconds=timeout_seconds,
                                                 aws_config=self.aws_config, opts=opts)
             case "gcp":
@@ -119,6 +122,14 @@ class Monad:
                                                              sqs=mq_topic, ram=ram, msazure_config=self.msazure_config,
                                                              opts=opts)
                 return func
+
+    def create_lambda_layer():
+        if self.cloud_provider == "aws":
+            return aws_lambda.create_lambda_layer()
+        elif self.cloud_provider == "gcp":
+            pass
+        elif self.cloud_provider == "msazure":
+            pass
 
 
     def create_message_queue(self, topic_name, message_retention_seconds="60s", environment={}, fifo=True, opts=None):
@@ -198,8 +209,7 @@ class Monad:
     def create_sql_command(self, name, handler, template, environment={}, debug=False, opts=None):
         synthesize(handler, template=template)
         python_script_name = handler.replace(".", "_")
-        command = bash_command(name, f"python3 {python_script_name}", f"./serverless_code/output/{self.cloud_provider}", debug,
-                               opts=opts)
+        command = bash_command(name, f"python3 {python_script_name}", f"./serverless_code/output/{self.cloud_provider}", debug, opts=opts)
         return command
 
 
@@ -282,5 +292,46 @@ class Monad:
                     return self.create_role_policy_attachment(rolename, rolefile, name, policyname, policyfile, opts=opts)
             case "gcp":
                 return self.create_iam_role(name, rolefile, opts=opts)
+            case "msazure":
+                pass
+
+
+    def create_dynamodb(self, name, attributes, hash_key, range_key=None, billing_mode="PROVISIONED", stream_enabled=False, stream_view_type=None, read_capacity=1, write_capacity=1, environment={}, opts=None):
+        """
+        Create DynamoDB table.
+
+        :param name: of DynamoDB table
+        :param attributes: of DynamoDB table
+        :param hash_key: name of hash or partition key
+        :param range_key: name of range/sort key
+        :param billing_mode: of DynamoDB table
+        :param stream_enabled: of DynamoDB table
+        :param stream_view_type: of DynamoDB table
+        :param read_capacity: of DynamoDB table
+        :param write_capacity: of DynamoDB table
+        :param opts: of Pulumi
+        :return: DynamoDB table object
+        """
+        match self.cloud_provider:
+            case "aws":
+                return aws_dynamodb.create_dynamodb(name, attributes, hash_key, range_key, billing_mode, stream_enabled, stream_view_type, read_capacity, write_capacity, environment, opts=opts)
+            case "gcp":
+                pass
+            case "msazure":
+                pass
+
+    def create_bucket(self, name, opts=None):
+        """
+        Create S3 bucket.
+
+        :param name: of S3 bucket
+        :param opts: of Pulumi
+        :return: S3 bucket object
+        """
+        match self.cloud_provider:
+            case "aws":
+                return aws_s3.create_bucket(name, opts=opts)
+            case "gcp":
+                pass
             case "msazure":
                 pass

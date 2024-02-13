@@ -6,7 +6,7 @@ from aws.s3 import create_bucket_object
 config = Config()
 
 
-def create_lambda(name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, imports=None, sqs=None, ram=256, timeout_seconds=60, aws_config=None, opts=None):
+def create_lambda(name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, imports=None, sqs=None, dynamodb=None, ram=256, timeout_seconds=60, aws_config=None, opts=None):
     """
     Create Lambda (faas).
 
@@ -20,6 +20,7 @@ def create_lambda(name, code_path, handler, runtime="python3.10", role=None, tem
     :param imports: list of strings to import into serverless function
     :param template: of serverless function
     :param sqs: if http_trigger is False, SQS object that will trigger Lambda
+    :param dynamodb: DynamoDB object that will trigger Lambda
     :param ram: available to Lambda
     :param runtime: Language and Version of serverless_code that will run in Lambda
     :param timeout_seconds: max time a Lambda can run for
@@ -67,10 +68,16 @@ def create_lambda(name, code_path, handler, runtime="python3.10", role=None, tem
                                )
 
     # EventSourceMapping if needed
-    if template.startswith("mq"):
-        mapping = EventSourceMapping(f"{name}-event-trigger",
+    if template.startswith("mq") or "|mq" in template:
+        mapping = EventSourceMapping(f"{name}-sqs-event-trigger",
                                      event_source_arn=sqs.arn,
                                      function_name=lambda_function.arn
+                                     )
+    if template.startswith("dynamodb") or "|dynamodb" in template:
+        mapping = EventSourceMapping(f"{name}-dynamodb-event-trigger",
+                                     event_source_arn=dynamodb.stream_arn,
+                                     function_name=lambda_function.arn,
+                                     starting_position="LATEST"
                                      )
     return lambda_function
 
@@ -95,7 +102,7 @@ def create_import_layer(code_path, name, runtime, code_bucket, architecture):
     wheel_architecture = "aarch64" if architecture == "arm64" else "x86_64"
     layer_script = bash_command(name=f"create-layer-{name}",
                                 command=f"rm -rf python && mkdir python && "
-                                        f"{runtime} -m pip install --platform=manylinux_2_17_{wheel_architecture} --only-binary=:all: -r requirements.txt -t ./python --no-cache && "
+                                        f"{runtime} -m pip install --platform=manylinux_2_17_{wheel_architecture} --only-binary=:all: -r requirements.txt -t ./python --no-cache --upgrade && "
                                         f"zip -r {zip_file} ./python/ ",
                                 path=import_path
                                 )

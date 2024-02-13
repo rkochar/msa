@@ -14,9 +14,14 @@ def create_sqs(name, visibility_timeout_seconds=60, fifo=True, environment={}, o
     :return: SQS object
     """
     new_name = f"{name}.fifo" if fifo else name
-    queue = Queue(new_name, name=new_name, fifo_queue=fifo, visibility_timeout_seconds=visibility_timeout_seconds,
-                  opts=opts)
-    environment[f"SQS_{name}"] = queue.url
-    environment["QUEUE_NAME"] = name
+    queue = Queue(new_name, name=new_name, fifo_queue=fifo, visibility_timeout_seconds=visibility_timeout_seconds, opts=opts)
+
+    environment["QUEUE_NAME"], environment["REGEX"] = name, False
+    if "-" in name:
+        environment["REGEX"] = True
+        environment[f"SQS_DO_NOT_USE"] = queue.url
+    else:
+        environment[f"SQS_{name}"] = queue.url
+
     export(f"sqs-{name}-url", queue.url)
     return queue, environment
