@@ -10,16 +10,16 @@ cloud_provider = config.get("cloud_provider")
 NEW_LINE_TAB, TAB = "\n    ", "    "
 
 
-def synthesize(function_name, code_path, handler, template, imports=[], is_time=True, is_telemetry=True):
+def synthesize(function_name, code_path, handler, template, imports=[], is_time=False, is_telemetry=False):
     name, function = handler.split(".")
-    stub = "http" if template.startswith("http") else "mq"
+    stub = get_stub(template)
     new_file_path = get_new_file_path(code_path, stub, name)
 
     makedirs(path.dirname(new_file_path), exist_ok=True)
     copyfile(f"./serverless_code/templates/{cloud_provider}/{stub}.py", new_file_path)
 
     replace(new_file_path, 'name = ""', f'name = "{function_name}"')
-    imports, new_string = synthesize_code(new_file_path, function, template, imports)
+    imports, new_string = synthesize_code(new_file_path, function, stub, template, imports)
     setup_template(new_file_path, new_string, code_path, name, function, function_name)
     telemetry_monad(is_time, is_telemetry, new_file_path, template)
     time_monad(is_time, is_telemetry, new_file_path)
@@ -73,8 +73,8 @@ def setup_template(new_file_path, new_string, code_path, name, function, functio
     replace(new_file_path, "<route>", function)  # For azure
 
 
-def synthesize_code(new_file_path, function, template, imports):
-    function_parameters = "headers, query_parameters" if template.startswith("http") else 'message.get("body")'
+def synthesize_code(new_file_path, function, stub, template, imports):
+    function_parameters = get_parameters(stub)
     new_string = f"body = {function}({function_parameters})"
 
     if "sql" in template:
@@ -82,6 +82,10 @@ def synthesize_code(new_file_path, function, template, imports):
         if cloud_provider == "gcp":
             imports.append("SQLAlchemy")
             imports.append("cloud-sql-python-connector")
+
+    if "_dynamodb" in template:
+        if cloud_provider == "aws":
+            append_file(new_file_path, f"./serverless_code/templates/{cloud_provider}/dynamodb_methods.py")
 
     if template.endswith("_pub"):
         append_file(new_file_path, f"./serverless_code/templates/{cloud_provider}/pub.py")
@@ -134,3 +138,23 @@ def get_new_file_path(code_path, stub, name):
     else:
         return f"./serverless_code/output/{cloud_provider}/{code_path}/{name}.py"
 
+
+def get_stub(template):
+    if template.startswith("http"):
+        return "http"
+    elif template.startswith("mq_") or template == "mq":
+        return "mq"
+    elif template.startswith("dynamodb_") or template == "dynamodb":
+        return "dynamodb"
+    else:
+        return "mq|dynamodb"
+
+
+def get_parameters(stub):
+    match stub:
+        case "http":
+            return "headers, query_parameters"
+        case "mq":
+            return 'message.get("body")'
+        case "dynamodb":
+            return "event.get('Records')"
