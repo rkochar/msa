@@ -16,7 +16,6 @@ def merge_opts(opts1: ResourceOptions, opts2: ResourceOptions):
     return ResourceOptions.merge(opts1, opts2)
 
 
-
 def bash_command(name, command, path=".", debug=False, opts=None):
     command = Command(f"command-{name}",
                       interpreter=["/bin/sh", "-c"],

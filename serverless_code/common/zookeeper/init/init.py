@@ -47,3 +47,4 @@ def init(event, context):
     node.children = []
     node.data = b""
     s3.write(node)
+    return "initialized"

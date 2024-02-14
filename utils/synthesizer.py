@@ -25,6 +25,7 @@ def synthesize(function_name, code_path, handler, template, imports=[], is_time=
     time_monad(is_time, is_telemetry, new_file_path)
 
     synthesize_requirements(code_path, imports)
+    synthesize_helpers(code_path)
 
 
 def time_monad(is_time, is_telemetry, new_file_path):
@@ -94,6 +95,9 @@ def synthesize_code(new_file_path, function, stub, template, imports):
         if cloud_provider == "gcp":
             imports.append("google-cloud-pubsub")
 
+    if "mq|dynamodb" in template:
+        if cloud_provider == "aws":
+            new_string = f"body = {function}(event, context)"
     return imports, new_string
 
 
@@ -104,6 +108,11 @@ def synthesize_requirements(code_path, imports=[]):
         makedirs(path.dirname(req_file_path), exist_ok=True)
         with open(req_file_path, mode='a', encoding='utf-8') as reqfile:
             reqfile.writelines(list(map(lambda x: x + "\n", imports)))
+
+
+def synthesize_helpers(code_path):
+    if path.exists(f"./serverless_code/common/{code_path}/helpers"):
+        copy_tree(f"./serverless_code/common/{code_path}/helpers", f"./serverless_code/output/{cloud_provider}/{code_path}/helpers")
 
 
 def replace(file_path, pattern, subst):
