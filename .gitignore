@@ -10,3 +10,7 @@ serverless_code/output/
 **/apiconfig.yaml
 
 **/clifunc/
+
+**/serverless_code/**/*.json
+**/zookeeper/helpers/
+data/

@@ -1,4 +1,4 @@
-from pulumi import Config
+from pulumi import Config, ResourceOptions
 
 from utils.aws import setup_aws
 from utils.msazure import setup_azure_console
@@ -79,7 +79,7 @@ class Monad:
                 return azure_apigw.create_apigw(name, routes, msazure_config=self.msazure_config, opts=opts)
 
 
-    def create_lambda(self, name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, mq_topic=None, dynamodb=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], is_timed=True, is_telemetry=True, opts=None):
+    def create_lambda(self, name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, mq_topic=None, dynamodb=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], is_timed=False, is_telemetry=False, opts=None):
         """
         Create Lambda and synthesize it's serverless_code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
@@ -109,13 +109,13 @@ class Monad:
                 return aws_lambda.create_lambda(name, code_path, handler, runtime, role, template,
                                                 environment, imports=imports, sqs=mq_topic, dynamodb=dynamodb,
                                                 ram=ram, timeout_seconds=timeout_seconds,
-                                                aws_config=self.aws_config, opts=opts)
+                                                aws_config=self.aws_config, opts=merge_opts(opts, ResourceOptions(depends_on=[self.aws_config.get("code_bucket")])))
             case "gcp":
                 return gcp_lambda.create_lambdav2(name, code_path, handler, runtime, role, environment, imports=imports,
                                                   http_trigger=http_trigger, topic=mq_topic,
                                                   min_instance=min_instance, max_instance=max_instance,
                                                   ram=ram, timeout_seconds=timeout_seconds,
-                                                  gcp_config=self.gcp_config, opts=opts)
+                                                  gcp_config=self.gcp_config, opts=merge_opts(opts, ResourceOptions(depends_on=[self.gcp_config.get("code_bucket")])))
             case "msazure":
                 # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], msazure_config=self.msazure_config, opts=opts)
                 func = azure_functionapp.create_function_app(code_path, name, handler, environment, http_trigger=http_trigger,
@@ -320,7 +320,7 @@ class Monad:
             case "msazure":
                 pass
 
-    def create_bucket(self, name, opts=None):
+    def create_bucket(self, name, legacy=False, opts=None):
         """
         Create S3 bucket.
 
@@ -330,8 +330,34 @@ class Monad:
         """
         match self.cloud_provider:
             case "aws":
-                return aws_s3.create_bucket(name, opts=opts)
+                if legacy:
+                    return aws_s3.create_bucket_legacy(name, opts=opts)
+                else:
+                    return aws_s3.create_bucket(name, opts=opts)
             case "gcp":
                 pass
             case "msazure":
                 pass
+    def create_bucket_object(self, name, bucket, source=None, content=None, content_type=None, legacy=False, opts=None):
+        """
+        Create S3 bucket object
+
+        :param name: of S3 bucket object
+        :param bucket: S3 bucket
+        :param source: code
+        legacy: if the bucket is legacy
+        :param opts: of Pulumi
+        return: S3 bucket object
+        """
+        match self.cloud_provider:
+            case "aws":
+                if legacy:
+                    return aws_s3.create_bucket_object_legacy(name, bucket, source, content, content_type, opts=opts)
+                else:
+                    return aws_s3.create_bucket_object(name, bucket, source, content, content_type, opts=opts)
+            case "gcp":
+                pass
+            case "msazure":
+                pass
+
+
