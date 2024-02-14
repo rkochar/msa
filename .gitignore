@@ -14,3 +14,4 @@ serverless_code/output/
 **/serverless_code/**/*.json
 **/zookeeper/helpers/
 data/
+.DS_Store
