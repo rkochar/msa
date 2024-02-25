@@ -1,10 +1,3 @@
-'''
-REDUCER Coordinator
-
-Copyright 2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-SPDX-License-Identifier: MIT-0
-'''
-
 import json
 import time
 from helpers.helpers import batch_creator, get_reducer_batch_size, get_mapper_files, check_job_done
@@ -53,13 +46,12 @@ def get_reducer_state_info(files, job_id, job_bucket):
 
 def write_reducer_state(n_reducers, n_s3, bucket, fname):
     ts = time.time()
-    # Write some stats to S3
-    # data = json.dumps({
-    #     "reducerCount": '%s' % n_reducers,
-    #     "totalS3Files": '%s' % n_s3,
-    #     "start_time": '%s' % ts
-    # })
-    # write_to_s3(bucket, fname, data, {})
+    data = json.dumps({
+        "reducerCount": '%s' % n_reducers,
+        "totalS3Files": '%s' % n_s3,
+        "start_time": '%s' % ts
+    })
+    write_to_s3(bucket, fname, data, {})
 
 
 def lambda_handler(s3_event):
@@ -108,7 +100,7 @@ def lambda_handler(s3_event):
 
             # Build the lambda parameters
             n_reducers = len(r_batch_params)
-            #n_s3 = n_reducers * len(r_batch_params[0])
+            n_s3 = n_reducers * len(r_batch_params[0])
             step_id, outputs = step_number + 1, []
 
             for i in range(len(r_batch_params)):
@@ -125,8 +117,8 @@ def lambda_handler(s3_event):
                 outputs.append(publish_message(str({"body": payload}), publish=True))
 
             # Now write the reducer state
-            # fname = "%s/reducerstate.%s" % (job_id, step_id)
-            # write_reducer_state(n_reducers, n_s3, bucket, fname)
+            fname = "%s/reducerstate.%s" % (job_id, step_id)
+            write_reducer_state(n_reducers, n_s3, bucket, fname)
         else:
             print("Still waiting for all the mappers to finish")
 

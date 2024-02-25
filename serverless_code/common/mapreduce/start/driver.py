@@ -1,20 +1,13 @@
 import json
-from helpers.helpers import compute_batch_size, calculate_costs, batch_creator
-from time import time, sleep
+from helpers.helpers import compute_batch_size, batch_creator
+import time
 
 
 def lambda_handler(headers, query_parameters):
     job_id, L_PREFIX = "bl-release", "BL"
     mapper_lambda_name, reducer_lambda_name, rc_lambda_name = L_PREFIX + "-mapper-" + job_id, L_PREFIX + "-reducer-" + job_id, L_PREFIX + "-rc-" + job_id
-
-    # 1. Get all keys to be processed  
-    # init 
     config = json.loads(open('helpers/driverconfig.json', 'r').read())
-    bucket = config["bucket"]
-    job_bucket = config["jobBucket"]
-    lambda_memory = config["lambdaMemory"]
-    concurrent_lambdas = config["concurrentLambdas"]
-
+    bucket, job_bucket, lambda_memory, concurrent_lambdas = config["bucket"], config["jobBucket"], config["lambdaMemory"], config["concurrentLambdas"]
 
     all_keys = []
     for obj in filter_objects_s3(bucket, prefix=config["prefix"]):
@@ -25,19 +18,18 @@ def lambda_handler(headers, query_parameters):
 
     bsize = compute_batch_size(all_keys, lambda_memory, concurrent_lambdas)
     batches = batch_creator(all_keys, bsize)
-    n_mappers = len(batches)
+    n_mappers, mappers_executed = len(batches), 0
 
     write_job_config(job_id, job_bucket, n_mappers, reducer_lambda_name, config["reducer"]["handler"])
 
     j_key = job_id + "/jobdata"
     data = json.dumps({
         "totalS3Files": len(all_keys),
-        "startTime": time()
+        "startTime": time.time()
     })
     write_to_s3(job_bucket, j_key, data, {})  # TODO: Cloud agnostic
 
     Ids = [i + 1 for i in range(n_mappers)]
-    mappers_executed = 0
     while mappers_executed < n_mappers:
         nm = min(concurrent_lambdas, n_mappers)
         output = publish_message(str({"body": {"batches": batches, "mapperId": Ids[mappers_executed: mappers_executed + nm][0], "jobBucket": job_bucket, "bucket": bucket, "jobId": job_id}}), publish=True)
