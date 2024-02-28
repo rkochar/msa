@@ -2,7 +2,10 @@ pulumi>=3.0.0,<4.0.0
 pulumi-aws>=6.0.2,<7.0.0
 pulumi-gcp
 pulumi-azure
+boto3
 azure-identity
 azure-mgmt-storage
 azure-mgmt-resource
 oyaml~=1.0
+google-cloud-storage
+google-cloud-pubsub

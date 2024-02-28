@@ -49,7 +49,9 @@ def telemetry_monad(is_time, is_telemetry, new_file_path, template):
         start_span_string += NEW_LINE_TAB + 'span = {"span_id": hex, "name": name, "start_time": start_time, "annotations": []}' + NEW_LINE_TAB + 'span["span_depth"], span["parent_span_id"] = 1, None'
         replace(new_file_path, "<start-span>", start_span_string)
 
-        span_string = 'span["end_time"] = ' + ("end_time" if is_time else "time()") + NEW_LINE_TAB + ("" if template.startswith("http") else TAB) + 'span["execution_time"] = str(span.get("end_time") - span.get("start_time"))'
+        span_string = 'span["end_time"] = ' + ("end_time" if is_time else "time()") + NEW_LINE_TAB + (
+            "" if template.startswith(
+                "http") else TAB) + 'span["execution_time"] = str(span.get("end_time") - span.get("start_time"))'
         replace(new_file_path, "<end-span>", span_string)
         replace(new_file_path, '"body": body,', f'"body": body, "span": span, ')
 
@@ -57,15 +59,23 @@ def telemetry_monad(is_time, is_telemetry, new_file_path, template):
     else:
         replace(new_file_path, TAB + TAB + "<end-span>\n", "")
         replace(new_file_path, TAB + "<end-span>\n", "")
-        replace(new_file_path, "<start-span>", "span = None")
+        replace(new_file_path, "<start-span>", "span, parent_span = None, None")  # TODO: test
 
 
 def configure_span(new_file_path, template):
-    if template.startswith("http"):
+    if template == "mq" or "_mq" in template:
+        pass
+    else:
         replace(new_file_path, "<span_depth>", "1")
         replace(new_file_path, "<parent_span>", "None")
-    elif template == "mq" or "_mq" in template:
-        pass
+    # can_not_start_span = ["http", "mq|dynamodb", "dynamodb", "s3"]
+    # for t in can_not_start_span:
+    #     if template.startswith(t):
+    #         replace(new_file_path, "<span_depth>", "1")
+    #         replace(new_file_path, "<parent_span>", "None")
+    #         return
+    #     elif template == "mq" or "_mq" in template:
+    #         pass
 
 
 def setup_template(new_file_path, new_string, code_path, name, function, function_name):
@@ -78,11 +88,16 @@ def synthesize_code(new_file_path, function, stub, template, imports):
     function_parameters = get_parameters(stub)
     new_string = f"body = {function}({function_parameters})"
 
-    if "sql" in template:
+    if "_sql" in template:
         append_file(new_file_path, f"./serverless_code/templates/{cloud_provider}/sql.py")
         if cloud_provider == "gcp":
             imports.append("SQLAlchemy")
             imports.append("cloud-sql-python-connector")
+
+    if "_s3" in template:
+        append_file(new_file_path, f"./serverless_code/templates/{cloud_provider}/s3_methods.py")
+        if cloud_provider == "gcp":
+            imports.append("google-cloud-storage")
 
     if "_dynamodb" in template:
         if cloud_provider == "aws":
@@ -91,7 +106,7 @@ def synthesize_code(new_file_path, function, stub, template, imports):
     if template.endswith("_pub"):
         append_file(new_file_path, f"./serverless_code/templates/{cloud_provider}/pub.py")
         new_string = f"body = {function}({function_parameters})" + NEW_LINE_TAB
-        new_string += "if not body.startswith('Errors found: '):"+ NEW_LINE_TAB + TAB + 'body = publish_message(str({"span": span, "body": body}))'
+        new_string += "if isinstance(body, str) and not body.startswith('Errors found: '):" + NEW_LINE_TAB + TAB + 'body = publish_message(str({"span": span, "body": body}))'
         if cloud_provider == "gcp":
             imports.append("google-cloud-pubsub")
 
@@ -112,7 +127,8 @@ def synthesize_requirements(code_path, imports=[]):
 
 def synthesize_helpers(code_path):
     if path.exists(f"./serverless_code/common/{code_path}/helpers"):
-        copy_tree(f"./serverless_code/common/{code_path}/helpers", f"./serverless_code/output/{cloud_provider}/{code_path}/helpers")
+        copy_tree(f"./serverless_code/common/{code_path}/helpers",
+                  f"./serverless_code/output/{cloud_provider}/{code_path}/helpers")
 
 
 def replace(file_path, pattern, subst):
@@ -142,7 +158,8 @@ def append_file(new_file_path, old_file_path):
 
 def get_new_file_path(code_path, stub, name):
     if cloud_provider == "msazure":
-        copy_tree(f"./serverless_code/templates/{cloud_provider}/{stub}", f"./serverless_code/output/{cloud_provider}/{code_path}")
+        copy_tree(f"./serverless_code/templates/{cloud_provider}/{stub}",
+                  f"./serverless_code/output/{cloud_provider}/{code_path}")
         return f"./serverless_code/output/{cloud_provider}/{code_path}/function_app.py"
     else:
         return f"./serverless_code/output/{cloud_provider}/{code_path}/{name}.py"
@@ -155,6 +172,8 @@ def get_stub(template):
         return "mq"
     elif template.startswith("dynamodb_") or template == "dynamodb":
         return "dynamodb"
+    elif template.startswith("s3"):
+        return "s3"
     else:
         return "mq|dynamodb"
 
@@ -164,6 +183,11 @@ def get_parameters(stub):
         case "http":
             return "headers, query_parameters"
         case "mq":
-            return 'message.get("body")'
+            return 'message["body"]'
         case "dynamodb":
             return "event.get('Records')"
+        case "s3":
+            if cloud_provider == "aws":
+                return "event['Records'][0]['s3']"
+            elif cloud_provider == "gcp":
+                return 'message'

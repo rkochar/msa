@@ -14,7 +14,7 @@ def template(event, context):
 
     sqs = boto3.client('sqs')
     queue_name, regex = getenv('QUEUE_NAME'), getenv('REGEX')
-    queue_url = getenv("SQS_DO_NOT_USE") if regex else getenv(f"SQS_{queue_name}")
+    queue_url = getenv("SQS_DO_NOT_USE") if regex == "true" else getenv(f"SQS_{queue_name}")
 
     record = event.get("Records")[0]
     message = literal_eval(record.get('body'))

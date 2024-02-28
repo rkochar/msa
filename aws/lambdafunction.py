@@ -1,12 +1,13 @@
 from pulumi import AssetArchive, FileArchive, ResourceOptions, Config
-from pulumi_aws.lambda_ import Function, FunctionEnvironmentArgs, EventSourceMapping, LayerVersion
+from pulumi_aws.lambda_ import Function, FunctionEnvironmentArgs, EventSourceMapping, LayerVersion, Permission
+from pulumi_aws.s3 import BucketNotification, BucketNotificationLambdaFunctionArgs
 from utils.helpers import bash_command
 from aws.s3 import create_bucket_object
 
 config = Config()
 
 
-def create_lambda(name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, imports=None, sqs=None, dynamodb=None, ram=256, timeout_seconds=60, aws_config=None, opts=None):
+def create_lambda(name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, imports=None, sqs=None, dynamodb=None, bucket=None, ram=256, timeout_seconds=60, aws_config=None, opts=None):
     """
     Create Lambda (faas).
 
@@ -21,6 +22,7 @@ def create_lambda(name, code_path, handler, runtime="python3.10", role=None, tem
     :param template: of serverless function
     :param sqs: if http_trigger is False, SQS object that will trigger Lambda
     :param dynamodb: DynamoDB object that will trigger Lambda
+    :param bucket: Tuple of (S3 bucket, prefix) that will trigger Lambda
     :param ram: available to Lambda
     :param runtime: Language and Version of serverless_code that will run in Lambda
     :param timeout_seconds: max time a Lambda can run for
@@ -71,14 +73,33 @@ def create_lambda(name, code_path, handler, runtime="python3.10", role=None, tem
     if template.startswith("mq") or "|mq" in template:
         mapping = EventSourceMapping(f"{name}-sqs-event-trigger",
                                      event_source_arn=sqs.arn,
-                                     function_name=lambda_function.arn
+                                     function_name=lambda_function.arn,
+                                     opts=opts
                                      )
     if template.startswith("dynamodb") or "|dynamodb" in template:
         mapping = EventSourceMapping(f"{name}-dynamodb-event-trigger",
                                      event_source_arn=dynamodb.stream_arn,
                                      function_name=lambda_function.arn,
-                                     starting_position="LATEST"
+                                     starting_position="LATEST",
+                                     opts=opts
                                      )
+    if template.startswith("s3") or "|s3" in template:
+        allow_bucket = Permission(f"allow-bucket-{name}",
+                                  action="lambda:InvokeFunction",
+                                  function=lambda_function.arn,
+                                  principal="s3.amazonaws.com",
+                                  source_arn=f"arn:aws:s3:::{bucket[0]}" if isinstance(bucket[0], str) else bucket[0].arn,
+                                  opts=opts
+                                  )
+        s3_notification = BucketNotification(f"{name}-s3-notification",
+                                             bucket=bucket[0] if isinstance(bucket[0], str) else bucket[0].id,
+                                             lambda_functions=[BucketNotificationLambdaFunctionArgs(
+                                                 lambda_function_arn=lambda_function.arn,
+                                                 events=["s3:ObjectCreated:*"],
+                                                 filter_prefix=bucket[1],
+                                             )],
+                                             opts=ResourceOptions(depends_on=[allow_bucket])
+                                             )
     return lambda_function
 
 

@@ -59,7 +59,6 @@ class Monad:
                 vpc_endpoint = aws_vpc.create_vpc_endpoint(name, service, self.aws_config)
                 self.aws_config["vpc_endpoint"] = vpc_endpoint
 
-
     def create_apigw(self, name, routes, opts=None):
         """
         Create APIGW.
@@ -78,8 +77,7 @@ class Monad:
             case "msazure":
                 return azure_apigw.create_apigw(name, routes, msazure_config=self.msazure_config, opts=opts)
 
-
-    def create_lambda(self, name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, mq_topic=None, dynamodb=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], is_timed=False, is_telemetry=False, opts=None):
+    def create_lambda(self, name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, mq_topic=None, dynamodb=None, bucket=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], is_timed=False, is_telemetry=False, opts=None):
         """
         Create Lambda and synthesize it's serverless_code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
@@ -93,6 +91,7 @@ class Monad:
         :param template: type of Lambda: eg. http, mq, sql
         :param mq_topic: if serverless function is triggered by a message queue, SQS object that will trigger Lambda
         :param dynamodb: if serverless function is triggered by an event in dynamodb, DynamoDB object that will trigger Lambda
+        :param bucket: if serverless function is triggered by an event in S3, Tuple of (S3 bucket, prefix) that will trigger Lambda
         :param min_instance: min number of Lambda instances (GCP only)
         :param max_instance: max number of Lambda instances (GCP only)
         :param ram: available to Lambda
@@ -102,35 +101,37 @@ class Monad:
         """
 
         synthesize(name, code_path, handler, template=template, imports=imports, is_time=is_timed, is_telemetry=is_telemetry)
-        http_trigger = True if template.startswith("http") or template == "sql" else False
 
         match self.cloud_provider:
             case "aws":
                 return aws_lambda.create_lambda(name, code_path, handler, runtime, role, template,
                                                 environment, imports=imports, sqs=mq_topic, dynamodb=dynamodb,
+                                                bucket=bucket,
                                                 ram=ram, timeout_seconds=timeout_seconds,
-                                                aws_config=self.aws_config, opts=merge_opts(opts, ResourceOptions(depends_on=[self.aws_config.get("code_bucket")])))
+                                                aws_config=self.aws_config, opts=merge_opts(opts, ResourceOptions(
+                        depends_on=[self.aws_config.get("code_bucket")])))
             case "gcp":
                 return gcp_lambda.create_lambdav2(name, code_path, handler, runtime, role, environment, imports=imports,
-                                                  http_trigger=http_trigger, topic=mq_topic,
+                                                  template=template, topic=mq_topic, s3_bucket=bucket,
                                                   min_instance=min_instance, max_instance=max_instance,
                                                   ram=ram, timeout_seconds=timeout_seconds,
-                                                  gcp_config=self.gcp_config, opts=merge_opts(opts, ResourceOptions(depends_on=[self.gcp_config.get("code_bucket")])))
+                                                  gcp_config=self.gcp_config, opts=merge_opts(opts, ResourceOptions(
+                        depends_on=[self.gcp_config.get("code_bucket")])))
             case "msazure":
                 # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], msazure_config=self.msazure_config, opts=opts)
-                func = azure_functionapp.create_function_app(code_path, name, handler, environment, http_trigger=http_trigger,
+                func = azure_functionapp.create_function_app(code_path, name, handler, environment,
+                                                             template-template,
                                                              sqs=mq_topic, ram=ram, msazure_config=self.msazure_config,
                                                              opts=opts)
                 return func
 
-    def create_lambda_layer():
+    def create_lambda_layer(self):
         if self.cloud_provider == "aws":
             return aws_lambda.create_lambda_layer()
         elif self.cloud_provider == "gcp":
             pass
         elif self.cloud_provider == "msazure":
             pass
-
 
     def create_message_queue(self, topic_name, message_retention_seconds="60s", environment={}, fifo=True, opts=None):
         """
@@ -148,11 +149,9 @@ class Monad:
             case "aws":
                 if self.aws_config.get("vpc") is not None and self.aws_config.get("vpc_endpoint") is None:
                     self.create_vpc_endpoint("sqs", "sqs")
-                return aws_sqs.create_sqs(topic_name, fifo=fifo, opts=opts)
+                return aws_sqs.create_sqs(topic_name, fifo=fifo, visibility_timeout_seconds=message_retention_seconds, opts=opts)
             case "gcp":
-                return gcp_pubsub.create_pubsub(topic_name, message_retention_seconds=message_retention_seconds,
-                                                environment=environment,
-                                                opts=opts)
+                return gcp_pubsub.create_pubsub(topic_name, message_retention_seconds=message_retention_seconds, environment=environment, opts=opts)
             case "msazure":
                 pass
 
@@ -172,7 +171,6 @@ class Monad:
                     return "db-f1-micro"
             case "msazure":
                 pass
-
 
     def create_sql_database(self, name, engine, engine_version, storage, username, password, instance_class, environment={}, opts=None):
         """
@@ -198,20 +196,20 @@ class Monad:
                 if self.aws_config.get("vpc") is None:
                     self.create_vpc("for-database")
                 return aws_sql.create_sql_database(name, engine, engine_version, storage, username,
-                                                   password, instance_class, environment, aws_config=self.aws_config, opts=opts)
+                                                   password, instance_class, environment, aws_config=self.aws_config,
+                                                   opts=opts)
             case "gcp":
                 return gcp_sql.create_sql_database(name, engine, engine_version, username,
                                                    password, instance_class, environment, opts=opts)
             case "msazure":
                 pass
 
-
     def create_sql_command(self, name, handler, template, environment={}, debug=False, opts=None):
         synthesize(handler, template=template)
         python_script_name = handler.replace(".", "_")
-        command = bash_command(name, f"python3 {python_script_name}", f"./serverless_code/output/{self.cloud_provider}", debug, opts=opts)
+        command = bash_command(name, f"python3 {python_script_name}", f"./serverless_code/output/{self.cloud_provider}",
+                               debug, opts=opts)
         return command
-
 
     def iam_role_json(self, name):
         """
@@ -227,7 +225,6 @@ class Monad:
                 return "roles/cloudfunctions.invoker"
             case "msazure":
                 pass
-
 
     def create_iam_role(self, name, roletype, opts=None):
         """
@@ -247,7 +244,6 @@ class Monad:
                 return rolefile
             case "msazure":
                 pass
-
 
     def create_role_policy_attachment(self, rolename, roletype, name, policyname, policytype, opts=None):
         """
@@ -271,7 +267,6 @@ class Monad:
             case "msazure":
                 pass
 
-
     def create_iam(self, rolename, rolefile, name=None, policyname=None, policyfile=None, opts=None):
         """
         Create IAM roles, policies and attachments.
@@ -289,12 +284,12 @@ class Monad:
                 if name is None:
                     return self.create_iam_role(rolename, rolefile, opts=opts)
                 else:
-                    return self.create_role_policy_attachment(rolename, rolefile, name, policyname, policyfile, opts=opts)
+                    return self.create_role_policy_attachment(rolename, rolefile, name, policyname, policyfile,
+                                                              opts=opts)
             case "gcp":
                 return self.create_iam_role(name, rolefile, opts=opts)
             case "msazure":
                 pass
-
 
     def create_dynamodb(self, name, attributes, hash_key, range_key=None, billing_mode="PROVISIONED", stream_enabled=False, stream_view_type=None, read_capacity=1, write_capacity=1, environment={}, opts=None):
         """
@@ -338,6 +333,7 @@ class Monad:
                 pass
             case "msazure":
                 pass
+
     def create_bucket_object(self, name, bucket, source=None, content=None, content_type=None, legacy=False, opts=None):
         """
         Create S3 bucket object
@@ -359,5 +355,3 @@ class Monad:
                 pass
             case "msazure":
                 pass
-
-

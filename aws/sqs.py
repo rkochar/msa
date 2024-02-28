@@ -14,6 +14,8 @@ def create_sqs(name, visibility_timeout_seconds=60, fifo=True, environment={}, o
     :return: SQS object
     """
     new_name = f"{name}.fifo" if fifo else name
+    if isinstance(visibility_timeout_seconds, str):
+        visibility_timeout_seconds = int(visibility_timeout_seconds[:-1]) if visibility_timeout_seconds[-1] == "s" else int(visibility_timeout_seconds)
     queue = Queue(new_name, name=new_name, fifo_queue=fifo, visibility_timeout_seconds=visibility_timeout_seconds, opts=opts)
 
     environment["QUEUE_NAME"], environment["REGEX"] = name, False
