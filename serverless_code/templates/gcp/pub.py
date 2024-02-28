@@ -1,7 +1,11 @@
 from google.cloud import pubsub_v1
+from os import getenv
 
+def publish_message(message, publish=False):
+    if not publish:
+        return message
+    print(f"publish_message: {message}")
 
-def publish_message(message):
     topic_path = getenv("TOPIC_ID")
     publisher = pubsub_v1.PublisherClient()
 

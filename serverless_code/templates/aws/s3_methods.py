@@ -11,10 +11,10 @@ def write_to_s3(bucket, key, data):
 
 
 def get_from_s3(bucket, key):
-    return s3_client.get_object(Bucket=bucket, Key=key)
+    return s3_client.get_object(Bucket=bucket, Key=key)['Body'].read().decode('utf-8')
 
 
-def list_objects_from_s3(bucket,  prefix):
+def list_objects_from_s3(bucket, prefix):
     return s3_client.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
 
 

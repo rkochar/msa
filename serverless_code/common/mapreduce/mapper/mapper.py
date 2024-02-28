@@ -18,8 +18,7 @@ def lambda_handler(headers):
 
     # Download and process all keys
     for key in src_keys:
-        response = get_from_s3(bucket=src_bucket, key=key)
-        contents = response['Body'].read().decode("utf-8")
+        contents = get_from_s3(bucket=src_bucket, key=key)
 
         for _ in contents.split('\n')[:-1]:
             line_count += 1

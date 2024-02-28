@@ -3,8 +3,7 @@ import json
 from urllib3 import request
 
 
-def calculate_costs(total_s3_size, job_keys, total_s3_get_ops, reducer_lambda_time, total_lambda_secs, lambda_memory,
-                    total_lines):
+def calculate_costs(total_s3_size, job_keys, total_s3_get_ops, reducer_lambda_time, total_lambda_secs, lambda_memory, total_lines):
     # S3 Storage cost - Account for mappers only; This cost is neglibile anyways since S3 costs 3 cents/GB/month
     s3_storage_hour_cost = 1 * 0.0000521574022522109 * (total_s3_size / 1024.0 / 1024.0 / 1024.0)  # cost per GB/hr
     s3_put_cost = len(job_keys) * 0.005 / 1000
@@ -38,7 +37,7 @@ def calculate_costs(total_s3_size, job_keys, total_s3_get_ops, reducer_lambda_ti
 
 
 def compute_batch_size(keys, lambda_memory, concurrent_lambdas):
-    max_mem_for_data = 0.6 * lambda_memory * 1000 * 1000;
+    max_mem_for_data = 0.6 * lambda_memory * 1000 * 1000
     size = 0.0
     for key in keys:
         if isinstance(key, dict):
@@ -70,6 +69,9 @@ def batch_creator(all_keys, batch_size):
 
     if len(batch):
         batches.append(batch)
+
+    if isinstance(all_keys[0], dict):
+        return list(map(lambda x: list(map(lambda y: {"bucket_name": None, "key": y["Name"]}, x)), batches))
     return list(map(lambda x: list(map(lambda y: {"bucket_name": y.bucket_name, "key": y.key}, x)), batches))
 
 

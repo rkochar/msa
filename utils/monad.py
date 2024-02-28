@@ -101,7 +101,6 @@ class Monad:
         """
 
         synthesize(name, code_path, handler, template=template, imports=imports, is_time=is_timed, is_telemetry=is_telemetry)
-        http_trigger = True if template.startswith("http") or template == "sql" else False
 
         match self.cloud_provider:
             case "aws":
@@ -113,7 +112,7 @@ class Monad:
                         depends_on=[self.aws_config.get("code_bucket")])))
             case "gcp":
                 return gcp_lambda.create_lambdav2(name, code_path, handler, runtime, role, environment, imports=imports,
-                                                  http_trigger=http_trigger, topic=mq_topic,
+                                                  template=template, topic=mq_topic, s3_bucket=bucket,
                                                   min_instance=min_instance, max_instance=max_instance,
                                                   ram=ram, timeout_seconds=timeout_seconds,
                                                   gcp_config=self.gcp_config, opts=merge_opts(opts, ResourceOptions(
@@ -121,7 +120,7 @@ class Monad:
             case "msazure":
                 # blob = azure_storageblob.create_storage_blob(name, handler.split(".")[0], msazure_config=self.msazure_config, opts=opts)
                 func = azure_functionapp.create_function_app(code_path, name, handler, environment,
-                                                             http_trigger=http_trigger,
+                                                             template-template,
                                                              sqs=mq_topic, ram=ram, msazure_config=self.msazure_config,
                                                              opts=opts)
                 return func
