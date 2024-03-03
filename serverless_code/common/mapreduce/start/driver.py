@@ -20,6 +20,7 @@ def lambda_handler(headers, query_parameters):
     bsize = compute_batch_size(all_keys, lambda_memory, concurrent_lambdas)
     batches = batch_creator(all_keys, bsize)
     n_mappers, mappers_executed = len(batches), 0
+    print(f"batches: {batches}, n_mappers: {n_mappers}")
 
     write_job_config(job_id, job_bucket, result_bucket, n_mappers, reducer_lambda_name, config["reducer"]["handler"])
 

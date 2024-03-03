@@ -24,7 +24,7 @@ def put_message_in_queue(message, sqs, queue_name, queue_url):
 
     print(f"Publishing message: {message} to queue: {queue_name}")
 
-    if queue_name.endswith("fifo"):
+    if queue_url.endswith("fifo"):
         response = sqs.send_message(QueueUrl=queue_url, MessageBody=message, MessageGroupId=queue_name,
                                     MessageDeduplicationId=dedupid)
     else:

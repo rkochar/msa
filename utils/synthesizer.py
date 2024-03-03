@@ -10,7 +10,7 @@ cloud_provider = config.get("cloud_provider")
 NEW_LINE_TAB, TAB = "\n    ", "    "
 
 
-def synthesize(function_name, code_path, handler, template, imports=[], is_time=False, is_telemetry=False):
+def synthesize(function_name, code_path, handler, template, imports=[], is_time=False, is_ram=False, is_telemetry=False):
     name, function = handler.split(".")
     stub = get_stub(template)
     new_file_path = get_new_file_path(code_path, stub, name)
@@ -22,19 +22,22 @@ def synthesize(function_name, code_path, handler, template, imports=[], is_time=
     imports, new_string = synthesize_code(new_file_path, function, stub, template, imports)
     setup_template(new_file_path, new_string, code_path, name, function, function_name)
     telemetry_monad(is_time, is_telemetry, new_file_path, template)
-    time_monad(is_time, is_telemetry, new_file_path)
+    time_and_ram_monad(is_time, is_ram, is_telemetry, new_file_path)
 
     synthesize_requirements(code_path, imports)
     synthesize_helpers(code_path)
 
 
-def time_monad(is_time, is_telemetry, new_file_path):
+def time_and_ram_monad(is_time, is_ram, is_telemetry, new_file_path):
     START_TIME, START_TIME_STRING, END_TIME = "<start-time>", "start_time = time()", "<end-time>"
+    ram = '"ram": str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss), ' if is_ram else ""
     if is_time:
         replace(new_file_path, START_TIME, START_TIME_STRING)
-        replace(new_file_path, '"body": body,', '"body": body, "execution_time": str(time() - start_time), ')
+        replace(new_file_path, '"body": body,', '"body": body, "execution_time": str(time() - start_time), ' + ram)
 
         end_time_string = 'end_time = time()' + NEW_LINE_TAB + 'execution_time = str(end_time - start_time)' + NEW_LINE_TAB + 'print(f"execution_time: {execution_time}")'
+        if is_ram:
+            end_time_string += NEW_LINE_TAB + 'print(f"ram: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}")'
         replace(new_file_path, END_TIME, end_time_string)
     else:
         if is_telemetry:

@@ -77,7 +77,7 @@ class Monad:
             case "msazure":
                 return azure_apigw.create_apigw(name, routes, msazure_config=self.msazure_config, opts=opts)
 
-    def create_lambda(self, name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, mq_topic=None, dynamodb=None, bucket=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], is_timed=False, is_telemetry=False, opts=None):
+    def create_lambda(self, name, code_path, handler, runtime="python3.10", role=None, template="http", environment={}, mq_topic=None, dynamodb=None, bucket=None, min_instance=1, max_instance=3, ram=256, timeout_seconds=60, imports=[], is_timed=False, is_ram=False, is_telemetry=False, opts=None):
         """
         Create Lambda and synthesize it's serverless_code.
         AWS: Lambda, GCP: Cloud Function, Azure: Function App
@@ -100,7 +100,7 @@ class Monad:
         :return: Lambda object
         """
 
-        synthesize(name, code_path, handler, template=template, imports=imports, is_time=is_timed, is_telemetry=is_telemetry)
+        synthesize(name, code_path, handler, template=template, imports=imports, is_time=is_timed, is_ram=is_ram, is_telemetry=is_telemetry)
 
         match self.cloud_provider:
             case "aws":
@@ -204,12 +204,6 @@ class Monad:
             case "msazure":
                 pass
 
-    def create_sql_command(self, name, handler, template, environment={}, debug=False, opts=None):
-        synthesize(handler, template=template)
-        python_script_name = handler.replace(".", "_")
-        command = bash_command(name, f"python3 {python_script_name}", f"./serverless_code/output/{self.cloud_provider}",
-                               debug, opts=opts)
-        return command
 
     def iam_role_json(self, name):
         """

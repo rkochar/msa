@@ -1,5 +1,4 @@
 def confirm_transaction(message):
-    message = literal_eval(message)
     sender, receiver, amount = int(message["sender"]), int(message["receiver"]), int(message["amount"])
     print(f"Confirming transaction sender: {sender}, receiver: {receiver}, amount: {amount}")
 

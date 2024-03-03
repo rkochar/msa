@@ -84,7 +84,7 @@ def lambda_handler(s3_event):
         ### Stateless Coordinator logic
         mapper_keys = get_mapper_files(files)
         print(f"mapper_keys: {mapper_keys}")
-        print("Mappers Done so far ", len(mapper_keys))
+        print(f"Mappers done so far: {len(mapper_keys)} and map_count: {map_count}")
 
         if map_count == len(mapper_keys):
 

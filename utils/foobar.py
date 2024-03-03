@@ -8,8 +8,8 @@ def apigw_foobar():
 
     apigw_lambda_iam_role = m.create_iam("a-lambda-iam-role", "lambda-basic-role", "lambda-role-attachment", "lambda-iam-policy", "lambda-basic-policy")
 
-    lambda_foo = m.create_lambda('foobar-foo', "foobar/foo", "foo.foo", template="http", role=apigw_lambda_iam_role)
-    lambda_bar = m.create_lambda('foobar-bar', "foobar/bar", "bar.bar", template="http", role=apigw_lambda_iam_role, imports=["pydantic", "numpy"])
+    lambda_foo = m.create_lambda('foobar-foo', "foobar/foo", "foo.foo", template="http", role=apigw_lambda_iam_role, is_timed=True, is_ram=True, is_telemetry=True)
+    lambda_bar = m.create_lambda('foobar-bar', "foobar/bar", "bar.bar", template="http", role=apigw_lambda_iam_role, imports=["pydantic", "numpy"], is_timed=True, is_ram=True, is_telemetry=True)
 
     routes = [
         ("/foo", "GET", lambda_foo, "foobar-foo", "lambda for foo"),

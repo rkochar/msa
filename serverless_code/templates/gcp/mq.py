@@ -4,6 +4,7 @@ from os import getenv
 from time import time
 from uuid import uuid4
 from ast import literal_eval
+import resource
 
 
 @functions_framework.cloud_event

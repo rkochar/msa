@@ -16,7 +16,7 @@ def check_transaction(headers, query_parameters):
     if current_amount < transaction.amount:
         return "Insufficient funds"
     else:
-        return publish_message(str({"sender": transaction.sender, "receiver": transaction.receiver, "amount": transaction.amount}), True)
+        return publish_message(str({"body": {"sender": transaction.sender, "receiver": transaction.receiver, "amount": transaction.amount}}), True)
 
 
 class Transaction(BaseModel):
