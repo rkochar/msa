@@ -92,7 +92,7 @@ def handler(event: dict, context):
 
         if (
             config.benchmarking
-            and timing_stats.repetitions % config.benchmarking_frequency == 0
+            and timing_stats.repetitions % max(1, config.benchmarking_frequency) == 0
         ):
             timing_stats.print()
 

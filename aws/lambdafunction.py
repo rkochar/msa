@@ -122,7 +122,7 @@ def create_import_layer(code_path, name, runtime, code_bucket, architecture):
     zip_file = f"{code_path.replace('/', '-')}-layer.zip"
     wheel_architecture = "aarch64" if architecture == "arm64" else "x86_64"
     layer_script = bash_command(name=f"create-layer-{name}",
-                                command=f"rm -rf python && mkdir python && "
+                                command=f"rm -rf python && mkdir python && rm -rf {zip_file} && "
                                         f"{runtime} -m pip install --platform=manylinux_2_17_{wheel_architecture} --only-binary=:all: -r requirements.txt -t ./python --no-cache --upgrade && "
                                         f"zip -r {zip_file} ./python/ ",
                                 path=import_path
