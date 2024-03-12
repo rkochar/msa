@@ -4,6 +4,7 @@ from os import getenv
 import re
 from time import time
 from uuid import uuid4
+import resource
 
 
 def template(event, context):

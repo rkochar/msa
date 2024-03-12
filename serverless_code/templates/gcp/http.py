@@ -2,6 +2,7 @@ import functions_framework
 from os import getenv
 from time import time
 from uuid import uuid4
+import resource
 
 
 @functions_framework.http

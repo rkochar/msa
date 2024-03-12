@@ -48,11 +48,11 @@ def zookeeper():
     dynamo_watch, dynamo_watch_environment = m.create_dynamodb(f"{prefix}-watch", attributes=[("path", "S")], hash_key="path")
 
     # TODO: make helper layers better. Maybe reuse the layers across Lambdas
-    lambda_writer = m.create_lambda(f'{prefix}-writer', "zookeeper/writer", "writer.handler", environment=common_environment | channel_environment | writer_environment | dynamo_writer_environment, template="mq|dynamodb", mq_topic=writer_queue, dynamodb=dynamo_writer, role=iam_role_writer, imports=[client_import])
-    lambda_distributor = m.create_lambda(f'{prefix}-distributor', "zookeeper/distributor", "distributor.handler", environment=common_environment | channel_environment | distributor_environment | dynamo_distribute_environment, template="mq|dynamodb", mq_topic=distributor_queue, dynamodb=dynamo_distribute, role=iam_role_distributor, imports=[client_import])
-    lambda_watch = m.create_lambda(f'{prefix}-watch', "zookeeper/watch", "watch.handler", environment=common_environment | channel_environment, template="http", role=iam_role_watch, imports=[client_import])
-    lambda_heartbeat = m.create_lambda(f'{prefix}-heartbeat', "zookeeper/heartbeat", "heartbeat.handler", environment=common_environment, template="http", role=iam_role_watch, imports=[client_import])
-    lambda_init = m.create_lambda("init", "zookeeper/init", "init.init", environment={"S3_DATA_BUCKET": config.get("S3_DATA_BUCKET"), "DEPLOYMENT_REGION": config.get("deployment-region"), "DEPLOYMENT_NAME": prefix}, template="http", role=iam_role_init, imports=[client_import])
+    lambda_writer = m.create_lambda(f'{prefix}-writer', "zookeeper/writer", "writer.handler", environment=common_environment | channel_environment | writer_environment | dynamo_writer_environment, template="mq|dynamodb", mq_topic=writer_queue, dynamodb=dynamo_writer, role=iam_role_writer, imports=[client_import], is_timed=True, is_ram=True, is_telemetry=False)
+    lambda_distributor = m.create_lambda(f'{prefix}-distributor', "zookeeper/distributor", "distributor.handler", environment=common_environment | channel_environment | distributor_environment | dynamo_distribute_environment, template="mq|dynamodb", mq_topic=distributor_queue, dynamodb=dynamo_distribute, role=iam_role_distributor, imports=[client_import], is_timed=True, is_ram=True, is_telemetry=False)
+    lambda_watch = m.create_lambda(f'{prefix}-watch', "zookeeper/watch", "watch.handler", environment=common_environment | channel_environment, template="http", role=iam_role_watch, imports=[client_import], is_timed=True, is_ram=True, is_telemetry=False)
+    lambda_heartbeat = m.create_lambda(f'{prefix}-heartbeat', "zookeeper/heartbeat", "heartbeat.handler", environment=common_environment, template="http", role=iam_role_watch, imports=[client_import], is_timed=True, is_ram=True, is_telemetry=False)
+    lambda_init = m.create_lambda("init", "zookeeper/init", "init.init", environment={"S3_DATA_BUCKET": config.get("S3_DATA_BUCKET"), "DEPLOYMENT_REGION": config.get("deployment-region"), "DEPLOYMENT_NAME": prefix}, template="http", role=iam_role_init, imports=[client_import], is_timed=True, is_ram=True, is_telemetry=False)
 
     # DynamoDB
     routes = [

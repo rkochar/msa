@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Dict, List, Set
 
@@ -85,12 +84,12 @@ def handler(event: dict, context):
     StorageStatistics.instance().reset()
     try:
         if config.benchmarking:
-            begin = time.time()
+            begin = time()
         watches_submitters: List[Future] = []
         for record in events:
 
             if config.benchmarking:
-                begin_parse = time.time()
+                begin_parse = time()
             counter: SystemCounter
             if "dynamodb" in record and record["eventName"] == "INSERT":
                 write_event = record["dynamodb"]["NewImage"]
@@ -121,7 +120,7 @@ def handler(event: dict, context):
             else:
                 raise NotImplementedError()
             if config.benchmarking:
-                end_parse = time.time()
+                end_parse = time()
                 timing_stats.add_result("parse", end_parse - begin_parse)
 
             """
@@ -138,17 +137,17 @@ def handler(event: dict, context):
 
                 operation = builder(counter, event_type, write_event)
 
-                begin_write = time.time()
+                begin_write = time()
                 # write new data
                 for r in regions:
                     ret = operation.execute(
                         config.system_storage, config.user_storage, epoch_counters[r]
                     )
-                end_write = time.time()
+                end_write = time()
                 timing_stats.add_result("write", end_write - begin_write)
 
                 if config.benchmarking:
-                    begin_watch = time.time()
+                    begin_watch = time()
                 # start watch delivery
                 for r in regions:
                     # if event_type == DistributorEventType.SET_DATA:
@@ -164,13 +163,13 @@ def handler(event: dict, context):
                     )
 
                 if config.benchmarking:
-                    end_watch = time.time()
+                    end_watch = time()
                     timing_stats.add_result("watch_query", end_watch - begin_watch)
 
                 for r in regions:
                     epoch_counters[r].update(operation.epoch_counters())
                 if config.benchmarking:
-                    begin_notify = time.time()
+                    begin_notify = time()
                 if ret:
                     # notify client about success
                     config.client_channel.notify(
@@ -184,7 +183,7 @@ def handler(event: dict, context):
                         {"status": "failure", "reason": "distributor failure"},
                     )
                 if config.benchmarking:
-                    end_notify = time.time()
+                    end_notify = time()
                     timing_stats.add_result("notify", end_notify - begin_notify)
 
             except Exception:
@@ -197,19 +196,19 @@ def handler(event: dict, context):
                     {"status": "failure", "reason": "distributor failure"},
                 )
         if config.benchmarking:
-            begin_watch_wait = time.time()
+            begin_watch_wait = time()
         for f in watches_submitters:
             f.result()
         if config.benchmarking:
-            end_watch_wait = time.time()
+            end_watch_wait = time()
             timing_stats.add_result("watch_notify", end_watch_wait - begin_watch_wait)
-            end = time.time()
+            end = time()
             timing_stats.add_result("total", end - begin)
             timing_stats.add_repetition()
 
         if (
             config.benchmarking
-            and timing_stats.repetitions % config.benchmarking_frequency == 0
+            and timing_stats.repetitions % max(1, config.benchmarking_frequency) == 0
         ):
             timing_stats.print()
 

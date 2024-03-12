@@ -1,4 +1,3 @@
-import base64
 import functions_framework
 from os import getenv
 from time import time
