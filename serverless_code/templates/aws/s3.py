@@ -12,6 +12,7 @@ def template(event, context):
     <start-time>
     <start-span>
     print("starting")
+    parent_span = message.get('span') or {}
 
     if span is not None:
         span["span_depth"] = (parent_span.get('span_depth') or 0) + 1

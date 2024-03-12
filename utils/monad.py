@@ -101,6 +101,7 @@ class Monad:
         """
 
         synthesize(name, code_path, handler, template=template, imports=imports, is_time=is_timed, is_ram=is_ram, is_telemetry=is_telemetry)
+        http_trigger = True if template.startswith("http") or template == "sql" else False
 
         match self.cloud_provider:
             case "aws":
