@@ -11,7 +11,12 @@ pip install requirements.txt
 
 To get started, some sample programs are already provided. Simply uncomment them in the main file to run it.
 - **foobar:**: A simple API application with two endpoints `/foo` and `/bar` that point to a serverless function with some business logic. foo is a simple hello world program (`/foo?name=<name>`) and bar is more complex. It imports two packages numpy and pydantic to validate a transaction. Pass headers `sender`, `receiver` and `amount`. Note: in AWS, bar will create a custom layer for Lambda with the imports which can be a challenge if host machine architecture does not match architecture of the Lambda. Set architecture in [Pulumi Config](#Pulumi-Config) to fix this.
-- **mvcc:**
+- **mvcc:** A Multi Version Concurrency Control database for transactions. TODO: add usage instructions
+- **Mapreduce:** A serverless mapreduce
+- **Zookeeper:** A serverless Zookeeper
+
+## Support
+Serverless applications can make a migration of infrastructure code and business logic in the serverless function (data migration is not yet supported) between AWS and GCP. Azure is not supported because they do not have serverless functions. I do not know what Azure Function Applications are but it is not atl all, in any way a serverless function and in Azure documentation, Azure calls it a [serverless solution](https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview?pivots=programming-language-csharp) instead of serverless function. Should Azure add serverless services, MSA can be extended to support Azure.
 
 ## Pulumi Config
 ```commandline
@@ -25,6 +30,7 @@ pulumi config set gcp:project <project name>
 
 pulumi config set azure:location "West Europe"
 ```
+$$
 
 ## TODO and Ideas
 - [] Confirm requirements.txt works
