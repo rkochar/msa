@@ -1,4 +1,4 @@
-# faas-monad
+# MSA - Monadic Approach to Serverless Applications
 This repository contains code written for my master thesis at Technical University of Delft.
 
 The Infrastructure of Code tool used is [Pulumi](https://www.pulumi.com/). Get started with
