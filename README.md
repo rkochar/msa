@@ -32,7 +32,6 @@ pulumi config set gcp:project <project name>
 
 pulumi config set azure:location "West Europe"
 ```
-$$
 
 ## TODO and Ideas
 - [] Confirm requirements.txt works
