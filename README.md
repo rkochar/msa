@@ -7,7 +7,7 @@ pip install requirements.txt
 ```
 
 ## Examples
-`__main__.py` is the default starting point of Pulumi. `pulumi preview`, `pulumi up` and `pulumi destroy` are the equivalents of `terragrunt plan`, `terragrunt apply` and `terragrunt destroy`. Run these commands in root directory.
+`__main__.py` is the default starting point of Pulumi. `pulumi preview`, `pulumi up` and `pulumi destroy` are the equivalents of `terraform plan`, `terraform apply` and `terraform destroy`. Run these commands in root directory.
 
 To get started, some sample programs are already provided. Simply uncomment them in the main file to run it.
 - **foobar:**: A simple API application with two endpoints `/foo` and `/bar` that point to a serverless function with some business logic. foo is a simple hello world program (`/foo?name=<name>`) and bar is more complex. It imports two packages numpy and pydantic to validate a transaction. Pass headers `sender`, `receiver` and `amount`. Note: in AWS, bar will create a custom layer for Lambda with the imports which can be a challenge if host machine architecture does not match architecture of the Lambda. Set architecture in [Pulumi Config](#Pulumi-Config) to fix this.
@@ -15,8 +15,10 @@ To get started, some sample programs are already provided. Simply uncomment them
 - **Mapreduce:** A serverless mapreduce
 - **Zookeeper:** A serverless Zookeeper
 
-## Support
-Serverless applications can make a migration of infrastructure code and business logic in the serverless function (data migration is not yet supported) between AWS and GCP. Azure is not supported because they do not have serverless functions. I do not know what Azure Function Applications are but it is not atl all, in any way a serverless function and in Azure documentation, Azure calls it a [serverless solution](https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview?pivots=programming-language-csharp) instead of serverless function. Should Azure add serverless services, MSA can be extended to support Azure.
+## Migration
+Set the variable provider to `aws`, `gcp` or `azure` with `pulumi config set cloud:provider <provider>` and then `pulumi up` to do a migration to a different provider.
+
+Serverless applications can make a migration of infrastructure code and business logic in the serverless function (data migration is not yet supported) between AWS and GCP. Azure is partially supported for migrations because they do not have serverless functions. I do not know what Azure Function Applications are but it is not atl all, in any way a serverless function. In Azure documentation, Azure describes it as a [serverless solution](https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview?pivots=programming-language-csharp) instead of serverless function. Should Azure add serverless functions, MSA can be extended to support migrations in and out of Azure.
 
 ## Pulumi Config
 ```commandline
